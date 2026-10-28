@@ -146,6 +146,20 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .today-label { fill: var(--text-muted); font-size: 11px; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--text-secondary); font-size: 12px; margin-top: 4px; }
 .legend svg { display: inline-block; width: 28px; height: 10px; vertical-align: middle; margin-right: 4px; overflow: visible; }
+@media (max-width: 640px) {
+  main { padding: 16px 12px 40px; }
+  h1 { font-size: 19px; }
+  .sub { font-size: 13px; }
+  .card { padding: 12px; }
+  .fv-kpi { flex: 1 1 40%; padding: 8px 10px; }
+  .fv-kpi:first-child { flex-basis: 100%; }
+  .fv-kpi .v { font-size: 21px; }
+  .fv-kpi .s { font-size: 11px; }
+  table { font-size: 12px; }
+  th, td { padding: 5px 6px; }
+  .chip { padding: 6px 11px; font-size: 13px; }  /* 손가락으로 누를 만한 크기 */
+  .tip { white-space: normal; max-width: 220px; }
+}
 .tip {
   position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--border);
   border-radius: 6px; padding: 6px 10px; font-size: 12px; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.12);
@@ -536,6 +550,22 @@ function niceTicks(max) {
   return ticks;
 }
 
+// 차트는 SVG 의 실제 폭(px)으로 그린다: 폰에서도 글자가 화면 글자 크기 그대로. 좁으면(640px 미만) 높이 · 여백 · 라벨을 줄인다
+function chartBox(svg, H, m, mN) {
+  const W = Math.max(300, Math.round(svg.getBoundingClientRect().width) || 1000), N = W < 640, h = N ? Math.round(H * 0.8) : H;
+  svg.setAttribute("viewBox", `0 0 ${W} ${h}`);
+  return { W, H: h, m: N ? mN : m, N };
+}
+const yearStep = (iw, years) => Math.max(1, Math.ceil(years / Math.max(1, iw / 44)));  // 연도 라벨이 44px 보다 촘촘하면 건너뜀
+// 손가락: 가로로 끌면 툴팁이 따라가고(세로 스크롤은 그대로), 탭하면 그 자리 값. 손을 떼도 툴팁은 남는다
+function scrub(hit, move, hide) {
+  hit.style.touchAction = "pan-y";
+  hit.addEventListener("pointermove", move);
+  hit.addEventListener("pointerdown", move);
+  hit.addEventListener("pointerleave", (e) => { if (e.pointerType !== "touch") hide(e); });
+}
+document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".chart-wrap")) for (const t of document.querySelectorAll(".tip")) t.style.display = "none"; });
+
 function axes(svg, W, H, m, ticks, Y, X, t0, t1, fmtTick) {
   const g = sv("g", { class: "grid" }), ax = sv("g", { class: "axis" });
   for (const v of ticks) {
@@ -544,9 +574,10 @@ function axes(svg, W, H, m, ticks, Y, X, t0, t1, fmtTick) {
     tx.textContent = fmtTick(v);
     ax.appendChild(tx);
   }
+  const ys = yearStep(W - m.l - m.r, (t1 - t0) / 3.156e10);
   for (let y = 2017; y <= new Date(t1).getFullYear(); y++) {
     const t = new Date(`${y}-07-01`).getTime();  // 연도 라벨은 그 해 가운데
-    if (t < t0 || t > t1) continue;
+    if (t < t0 || t > t1 || y % ys) continue;
     const tx = sv("text", { x: X(t), y: H - 8, "text-anchor": "middle" });
     tx.textContent = y;
     ax.appendChild(tx);
@@ -642,7 +673,8 @@ function draw(d) {
   }
 
   // 두 패널이 같은 x 축을 쓴다. 오른쪽 끝은 마지막 forward 연도
-  const W = 1000, m = { l: 56, r: 40, t: 18, b: 28 };
+  const B1 = chartBox(svg, 300, { l: 56, r: 40, t: 18, b: 28 }, { l: 40, r: 20, t: 18, b: 24 }), B2 = chartBox(psvg, 200, B1.m, B1.m);
+  const W = B1.W, m = B1.m, N = B1.N;
   const iw = W - m.l - m.r;
   const t0 = new Date("2016-10-01").getTime();
   const t1 = Math.max(ASOF.getTime(), ...pts.map((x) => x.date.getTime()), ...fpts.map((f) => f.date.getTime()));
@@ -650,7 +682,7 @@ function draw(d) {
   const xToday = X(ASOF.getTime());
 
   // PER 패널
-  const H1 = 300, ih1 = H1 - m.t - m.b;
+  const H1 = B1.H, ih1 = H1 - m.t - m.b;
   const okVals = pts.filter((x) => x.ok).map((x) => x.p);
   const ymax = Math.max(...okVals, ...fpts.map((f) => f.per[1]), A.v != null && A.v <= CAP ? A.v : 0, 1) * 1.12;
   const ticks = niceTicks(ymax), ytop = ticks[ticks.length - 1];
@@ -687,6 +719,7 @@ function draw(d) {
     svg.appendChild(f.actual
       ? sv("rect", { class: "fdot", x: x - 4.5, y: y - 4.5, width: 9, height: 9 })
       : sv("circle", { class: `fdot${f.est ? " est" : ""}`, cx: x, cy: y, r: 4.5 }));
+    if (N && f.i % 2) continue;  // 좁은 화면은 한 해 걸러 값 라벨
     const tx = sv("text", { class: "fval", x, y: y - 10, "text-anchor": "middle" });
     tx.textContent = fwdText(f) + (f.thin ? "*" : "");
     svg.appendChild(tx);
@@ -702,7 +735,7 @@ function draw(d) {
   today(svg, H1);
 
   // 주가 패널
-  const H2 = 200, ih2 = H2 - m.t - m.b;
+  const H2 = B2.H, ih2 = H2 - m.t - m.b;
   const closes = pts.map((x) => x.close).filter((c) => c != null);
   let Y2 = null;
   if (closes.length) {
@@ -766,8 +799,7 @@ function draw(d) {
     tip.style.top = (svg.getBoundingClientRect().top - wrap.top + 8) + "px";
   };
   for (const L of layers) {
-    L.hit.addEventListener("pointermove", (e) => move(e, L.svg));
-    L.hit.addEventListener("pointerleave", hide);
+    scrub(L.hit, (e) => move(e, L.svg), hide);
   }
 }
 
@@ -1061,7 +1093,7 @@ const upside = (fv, px, future) => { const u = fv / px - 1; return `${u >= 0 ? "
 function fvChart() {
   const svg = $("fv-chart"), tip = $("fv-tip");
   svg.replaceChildren(); tip.style.display = "none";
-  const W = 1000, H = 340, m = { l: 56, r: 64, t: 22, b: 28 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const { W, H, m, N } = chartBox(svg, 340, { l: 56, r: 64, t: 22, b: 28 }, { l: 40, r: 20, t: 22, b: 24 }), iw = W - m.l - m.r, ih = H - m.t - m.b;
   const x0 = fvView.range === "10" ? Math.max(FV_HIST[0].x, ASOF_M - 120) : Math.max(ASOF_M - 60, FV_HIST.find((h) => h.fv).x), x1 = FV_PTS[FV_PTS.length - 1].x;
   const X = (x) => m.l + ((x - x0) / (x1 - x0)) * iw;
   const L = fvView.soxl && fvView.idx === "SOXX";
@@ -1076,7 +1108,8 @@ function fvChart() {
     g.appendChild(sv("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v) }));
     const tx = sv("text", { x: m.l - 6, y: Y(v) + 4, "text-anchor": "end" }); tx.textContent = `$${v}`; ax.appendChild(tx);
   }
-  for (let y = Math.ceil(x0 / 12); y * 12 <= x1; y++) {
+  for (let y = Math.ceil(x0 / 12), ys = yearStep(iw, (x1 - x0) / 12); y * 12 <= x1; y++) {
+    if (y % ys) continue;
     const tx = sv("text", { x: X(y * 12), y: H - 8, "text-anchor": "middle" }); tx.textContent = y; ax.appendChild(tx);
   }
   svg.append(g, ax);
@@ -1094,7 +1127,7 @@ function fvChart() {
   line("line fwd", withFv.filter((h) => h.x + 13 >= ASOF_M).concat(FV_PTS), "fv");
   for (const p of FV_PTS) {
     svg.appendChild(sv("circle", { class: "fdot", cx: X(p.x), cy: Y(p.fv), r: 4 }));
-    if (p.y == null || p.y === Y0) continue;  // 오늘 값은 현재가 라벨에, 올해 말은 몇 달 차이라 생략
+    if (p.y == null || p.y === Y0 || (N && (p.y - Y0) % 2 === 0)) continue;  // 오늘 값은 현재가 라벨에, 올해 말은 몇 달 차이라 생략
     const tx = sv("text", { class: "fval", x: X(p.x), y: Y(p.fv) - 10, "text-anchor": "middle" });
     tx.textContent = `$${p.fv.toFixed(0)}`; svg.appendChild(tx);
   }
@@ -1105,23 +1138,23 @@ function fvChart() {
     line("line soxl fwd", lh.filter((h) => h.x + 13 >= ASOF_M).concat(FV_PTS), "lfv");
     for (const p of FV_PTS) {
       svg.appendChild(sv("circle", { class: "fdot soxl", cx: X(p.x), cy: Y(p.lfv), r: 4 }));
-      if (p.y == null || p.y === Y0) continue;
+      if (p.y == null || p.y === Y0 || (N && (p.y - Y0) % 2 === 0)) continue;
       const tx = sv("text", { class: "fval soxl", x: X(p.x), y: Y(p.lfv) + 18, "text-anchor": "middle" });
       tx.textContent = `$${p.lfv.toFixed(0)}`; svg.appendChild(tx);
     }
     svg.appendChild(sv("circle", { class: "dot soxl-px-dot", cx: xT, cy: Y(SOXL_PRICE), r: 4 }));
     const ll = sv("text", { class: "avg-label", x: xT + 6, y: Y(SOXL_PRICE) + 16 });
-    ll.textContent = `SOXL $${SOXL_PRICE.toFixed(1)} · 적정가 $${FV_PTS[0].lfv.toFixed(1)}`; svg.appendChild(ll);
+    ll.textContent = N ? `SOXL $${SOXL_PRICE.toFixed(1)}` : `SOXL $${SOXL_PRICE.toFixed(1)} · 적정가 $${FV_PTS[0].lfv.toFixed(1)}`; svg.appendChild(ll);
   }
   svg.appendChild(sv("circle", { class: "dot bt-px-dot", cx: xT, cy: Y(SOXX_PRICE), r: 4 }));
   const pl = sv("text", { class: "avg-label", x: xT + 6, y: Y(SOXX_PRICE) + 16 });
-  pl.textContent = `현재가 $${SOXX_PRICE.toFixed(0)} · 적정가 $${FV_PTS[0].fv.toFixed(0)}`; svg.appendChild(pl);
+  pl.textContent = N ? `현재가 $${SOXX_PRICE.toFixed(0)}` : `현재가 $${SOXX_PRICE.toFixed(0)} · 적정가 $${FV_PTS[0].fv.toFixed(0)}`; svg.appendChild(pl);
 
   const all = vis.concat(FV_PTS);
   const cross = sv("line", { class: "cross", y1: m.t, y2: H - m.b, visibility: "hidden" });
   const hit = sv("rect", { x: m.l, y: 0, width: iw, height: H, fill: "transparent" });
   svg.append(cross, hit);
-  hit.addEventListener("pointermove", (evt) => {
+  const onMove = (evt) => {
     const r = svg.getBoundingClientRect(), vx = ((evt.clientX - r.left) / r.width) * W;
     let best = all[0];
     for (const p of all) if (Math.abs(X(p.x) - vx) < Math.abs(X(best.x) - vx)) best = p;
@@ -1141,8 +1174,8 @@ function fvChart() {
     const wrap = $("fv-wrap").getBoundingClientRect(), px = (cx / W) * r.width, tw = tip.offsetWidth;
     tip.style.left = (px + 12 + tw > wrap.width ? px - 12 - tw : px + 12) + "px";
     tip.style.top = "8px";
-  });
-  hit.addEventListener("pointerleave", () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); });
+  };
+  scrub(hit, onMove, () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); });
 }
 
 function fvContrib() {
@@ -1281,7 +1314,7 @@ function sfvRender() {
 function sfvChart(hist, pts, cur, px0, pre = "sfv") {
   const svg = $(`${pre}-chart`), tip = $(`${pre}-tip`);
   svg.replaceChildren(); tip.style.display = "none";
-  const W = 1000, H = 320, m = { l: 64, r: 64, t: 34, b: 28 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const { W, H, m, N } = chartBox(svg, 320, { l: 64, r: 64, t: 34, b: 28 }, { l: 52, r: 20, t: 30, b: 24 }), iw = W - m.l - m.r, ih = H - m.t - m.b;
   const fvPts = pts.filter((p) => p.fv);
   const x0 = hist.length ? hist[0].x : pts[0].x - 12, x1 = pts[pts.length - 1].x;
   const X = (x) => m.l + ((x - x0) / (x1 - x0)) * iw;
@@ -1301,7 +1334,8 @@ function sfvChart(hist, pts, cur, px0, pre = "sfv") {
     g.appendChild(sv("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v) }));
     const tx = sv("text", { x: m.l - 6, y: Y(v) + 4, "text-anchor": "end" }); tx.textContent = moneyTick(+v.toPrecision(6), cur); ax.appendChild(tx);
   }
-  for (let y = Math.ceil(x0 / 12); y * 12 <= x1; y++) {
+  for (let y = Math.ceil(x0 / 12), ys = yearStep(iw, (x1 - x0) / 12); y * 12 <= x1; y++) {
+    if (y % ys) continue;
     const tx = sv("text", { x: X(y * 12), y: H - 8, "text-anchor": "middle" }); tx.textContent = y; ax.appendChild(tx);
   }
   svg.append(g, ax);
@@ -1323,21 +1357,23 @@ function sfvChart(hist, pts, cur, px0, pre = "sfv") {
   line("line fwd", hist.filter((h) => h.x + 13 >= ASOF_M).concat(pts), "fv");
   for (const p of fvPts) {
     svg.appendChild(sv("circle", { class: "fdot", cx: X(p.x), cy: Y(p.fv), r: 4 }));
-    if (p.y == null || p.y === Y0) continue;
+    if (p.y == null || p.y === Y0 || (N && (p.y - Y0) % 2 === 0)) continue;
     const tx = sv("text", { class: "fval", x: X(p.x), y: Y(p.fv) - 10, "text-anchor": "middle" });
     tx.textContent = money(p.fv, cur); svg.appendChild(tx);
   }
   if (px0) {
     svg.appendChild(sv("circle", { class: "dot bt-px-dot", cx: xT, cy: Y(px0), r: 4 }));
-    const pl = sv("text", { class: "avg-label", x: xT + 6, y: Y(px0) + 16 });
-    pl.textContent = `현재가 ${money(px0, cur)}${pts[0].fv ? ` · 적정가 ${money(pts[0].fv, cur)}` : ""}`; svg.appendChild(pl);
+    if (!N) {  // 좁은 화면은 연말 값 라벨과 겹쳐서 생략 (값은 위 카드와 툴팁에)
+      const pl = sv("text", { class: "avg-label", x: xT + 6, y: Y(px0) + 16 });
+      pl.textContent = `현재가 ${money(px0, cur)}${pts[0].fv ? ` · 적정가 ${money(pts[0].fv, cur)}` : ""}`; svg.appendChild(pl);
+    }
   }
 
   const all = hist.concat(pts);
   const cross = sv("line", { class: "cross", y1: m.t, y2: H - m.b, visibility: "hidden" });
   const hit = sv("rect", { x: m.l, y: 0, width: iw, height: H, fill: "transparent" });
   svg.append(cross, hit);
-  hit.addEventListener("pointermove", (evt) => {
+  const onMove = (evt) => {
     const r = svg.getBoundingClientRect(), vx = ((evt.clientX - r.left) / r.width) * W;
     let best = all[0];
     for (const p of all) if (Math.abs(X(p.x) - vx) < Math.abs(X(best.x) - vx)) best = p;
@@ -1354,8 +1390,8 @@ function sfvChart(hist, pts, cur, px0, pre = "sfv") {
     const wrap = $(`${pre}-wrap`).getBoundingClientRect(), px = (cx / W) * r.width, tw = tip.offsetWidth;
     tip.style.left = (px + 12 + tw > wrap.width ? px - 12 - tw : px + 12) + "px";
     tip.style.top = "8px";
-  });
-  hit.addEventListener("pointerleave", () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); });
+  };
+  scrub(hit, onMove, () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); });
 }
 
 function buildSfv() {
@@ -1598,6 +1634,19 @@ buildM7();
 let init = DATA[0].t;
 try { const s = localStorage.getItem("soxx-per-sel"); if (s && DATA.some((d) => d.t === s)) init = s; } catch (e) {}
 select(init);
+
+// 화면 폭이 바뀌면(회전 · 창 크기) 차트를 그 폭으로 다시 그린다. 접혀 있던 원자료는 펼칠 때 그린다
+let drawnW = innerWidth, rz = 0;
+addEventListener("resize", () => {
+  clearTimeout(rz);
+  rz = setTimeout(() => {
+    if (innerWidth === drawnW) return;
+    drawnW = innerWidth;
+    fvChart(); sfvRender(); m7Render();
+    if (current) draw(DATA.find((d) => d.t === current));
+  }, 150);
+});
+$("raw").addEventListener("toggle", () => { if ($("raw").open && current) draw(DATA.find((d) => d.t === current)); });
 </script>
 <script>
 // 갱신: 장중 30분마다 GitHub Actions 가 주가를 받아 다시 빌드한다. 열려 있는 페이지는 새 빌드를 확인하면 다시 불러온다.
