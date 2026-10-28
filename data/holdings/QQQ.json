@@ -1,0 +1,527 @@
+[
+[
+"NVDA",
+"NVIDIA Corp",
+8.43
+],
+[
+"AAPL",
+"Apple Inc",
+7.28
+],
+[
+"MSFT",
+"Microsoft Corp",
+5.75
+],
+[
+"MU",
+"Micron Technology Inc",
+5.01
+],
+[
+"AMD",
+"Advanced Micro Devices Inc",
+4.27
+],
+[
+"AMZN",
+"Amazon.com Inc",
+4.06
+],
+[
+"META",
+"Meta Platforms Inc",
+3.24
+],
+[
+"GOOGL",
+"Alphabet Inc",
+3.01
+],
+[
+"TSLA",
+"Tesla Inc",
+2.91
+],
+[
+"GOOG",
+"Alphabet Inc",
+2.81
+],
+[
+"SPCX",
+"Space Exploration Technologies Corp",
+2.81
+],
+[
+"INTC",
+"Intel Corp",
+2.59
+],
+[
+"AVGO",
+"Broadcom Inc",
+2.53
+],
+[
+"WMT",
+"Walmart Inc",
+2.09
+],
+[
+"CSCO",
+"Cisco Systems Inc",
+1.83
+],
+[
+"LRCX",
+"Lam Research Corp",
+1.8
+],
+[
+"PLTR",
+"Palantir Technologies Inc",
+1.79
+],
+[
+"AMAT",
+"Applied Materials Inc",
+1.77
+],
+[
+"COST",
+"Costco Wholesale Corp",
+1.69
+],
+[
+"PANW",
+"Palo Alto Networks Inc",
+1.36
+],
+[
+"NFLX",
+"Netflix Inc",
+1.15
+],
+[
+"CRWD",
+"Crowdstrike Holdings Inc",
+1.14
+],
+[
+"KLAC",
+"KLA Corp",
+1.12
+],
+[
+"TXN",
+"Texas Instruments Inc",
+1.11
+],
+[
+"SNDK",
+"Sandisk Corp",
+1.04
+],
+[
+"MRVL",
+"Marvell Technology Inc",
+0.99
+],
+[
+"LIN",
+"Linde PLC",
+0.91
+],
+[
+"AMGN",
+"Amgen Inc",
+0.9
+],
+[
+"ADI",
+"Analog Devices Inc",
+0.83
+],
+[
+"QCOM",
+"QUALCOMM Inc",
+0.8
+],
+[
+"STX",
+"Seagate Technology Holdings PLC",
+0.79
+],
+[
+"SHOP",
+"Shopify Inc",
+0.76
+],
+[
+"GILD",
+"Gilead Sciences Inc",
+0.74
+],
+[
+"TMUS",
+"T-Mobile US Inc",
+0.72
+],
+[
+"ASML",
+"ASML Holding NV",
+0.72
+],
+[
+"PEP",
+"PepsiCo Inc",
+0.71
+],
+[
+"WDC",
+"Western Digital Corp",
+0.62
+],
+[
+"ISRG",
+"Intuitive Surgical Inc",
+0.57
+],
+[
+"FTNT",
+"Fortinet Inc",
+0.55
+],
+[
+"ARM",
+"ARM Holdings PLC",
+0.55
+],
+[
+"VRTX",
+"Vertex Pharmaceuticals Inc",
+0.53
+],
+[
+"BKNG",
+"Booking Holdings Inc",
+0.49
+],
+[
+"SBUX",
+"Starbucks Corp",
+0.45
+],
+[
+"ADP",
+"Automatic Data Processing Inc",
+0.42
+],
+[
+"CDNS",
+"Cadence Design Systems Inc",
+0.4
+],
+[
+"LITE",
+"Lumentum Holdings Inc",
+0.4
+],
+[
+"MAR",
+"Marriott International Inc/MD",
+0.39
+],
+[
+"ADBE",
+"Adobe Inc",
+0.39
+],
+[
+"SNPS",
+"Synopsys Inc",
+0.39
+],
+[
+"DDOG",
+"Datadog Inc",
+0.38
+],
+[
+"CEG",
+"Constellation Energy Corp",
+0.38
+],
+[
+"CSX",
+"CSX Corp",
+0.36
+],
+[
+"MNST",
+"Monster Beverage Corp",
+0.35
+],
+[
+"MELI",
+"MercadoLibre Inc",
+0.35
+],
+[
+"APP",
+"AppLovin Corp",
+0.34
+],
+[
+"INTU",
+"Intuit Inc",
+0.32
+],
+[
+"CMCSA",
+"Comcast Corp",
+0.32
+],
+[
+"CTAS",
+"Cintas Corp",
+0.32
+],
+[
+"DASH",
+"DoorDash Inc",
+0.32
+],
+[
+null,
+"Warner Bros Discovery Inc",
+0.32
+],
+[
+"REGN",
+"Regeneron Pharmaceuticals Inc",
+0.31
+],
+[
+"MDLZ",
+"Mondelez International Inc",
+0.31
+],
+[
+"ROST",
+"Ross Stores Inc",
+0.3
+],
+[
+"MPWR",
+"Monolithic Power Systems Inc",
+0.29
+],
+[
+"TER",
+"Teradyne Inc",
+0.29
+],
+[
+"ORLY",
+"O'Reilly Automotive Inc",
+0.28
+],
+[
+"ABNB",
+"Airbnb Inc",
+0.28
+],
+[
+"HON",
+"Honeywell International Inc",
+0.28
+],
+[
+"AEP",
+"American Electric Power Co Inc",
+0.27
+],
+[
+"NXPI",
+"NXP Semiconductors NV",
+0.25
+],
+[
+"ALAB",
+"Astera Labs Inc",
+0.25
+],
+[
+"NBIS",
+"Nebius Group NV",
+0.24
+],
+[
+"FAST",
+"Fastenal Co",
+0.24
+],
+[
+"USD",
+"CASH & EQUIVALENTS",
+0.24
+],
+[
+"MSTR",
+"Strategy Inc",
+0.24
+],
+[
+"PCAR",
+"PACCAR Inc",
+0.24
+],
+[
+"BKR",
+"Baker Hughes Co",
+0.23
+],
+[
+"FANG",
+"Diamondback Energy Inc",
+0.21
+],
+[
+"PDD",
+"PDD Holdings Inc",
+0.21
+],
+[
+"HONA",
+"Honeywell Aerospace Inc",
+0.2
+],
+[
+"PYPL",
+"PayPal Holdings Inc",
+0.19
+],
+[
+"XEL",
+"Xcel Energy Inc",
+0.19
+],
+[
+"CCEP",
+"Coca-Cola Europacific Partners PLC",
+0.18
+],
+[
+"RKLB",
+"Rocket Lab Corp",
+0.18
+],
+[
+"ADSK",
+"Autodesk Inc",
+0.18
+],
+[
+"MCHP",
+"Microchip Technology Inc",
+0.18
+],
+[
+"IDXX",
+"IDEXX Laboratories Inc",
+0.17
+],
+[
+"KDP",
+"Keurig Dr Pepper Inc",
+0.17
+],
+[
+"EXC",
+"Exelon Corp",
+0.17
+],
+[
+"CRWV",
+"CoreWeave Inc",
+0.17
+],
+[
+"FER",
+"Ferrovial NV",
+0.16
+],
+[
+"TTWO",
+"Take-Two Interactive Software Inc",
+0.16
+],
+[
+"PAYX",
+"Paychex Inc",
+0.15
+],
+[
+"TRI",
+"Thomson Reuters Corp",
+0.15
+],
+[
+"ODFL",
+"Old Dominion Freight Line Inc",
+0.15
+],
+[
+"WDAY",
+"Workday Inc",
+0.15
+],
+[
+"AXON",
+"Axon Enterprise Inc",
+0.14
+],
+[
+null,
+"CME E-Mini NASDAQ 100 Index Future",
+0.14
+],
+[
+"ROP",
+"Roper Technologies Inc",
+0.14
+],
+[
+"DXCM",
+"Dexcom Inc",
+0.13
+],
+[
+"GEHC",
+"GE HealthCare Technologies Inc",
+0.12
+],
+[
+"ALNY",
+"Alnylam Pharmaceuticals Inc",
+0.12
+],
+[
+"CPRT",
+"Copart Inc",
+0.1
+],
+[
+null,
+"CASH COLLATERAL",
+0.1
+],
+[
+null,
+"CONTRA FUTURE FUTURE DEC 18 26",
+0.1
+]
+]
