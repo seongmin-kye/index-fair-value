@@ -90,6 +90,8 @@ def main():
     s = line(s, "SOXX_HIST", js(hist["SOXX"]) + ";  // [월, 월말 종가] 분할 보정")
     s = line(s, "SOXL_HIST", js(hist["SOXL"]) + ";")
     s = line(s, "SOXX_PRICE", f"{hist['SOXX'][-1][1]};  // {hist['SOXX'][-1][0]} 종가")
+    built = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+    s = line(s, "BUILT", json.dumps(built) + ";  // 빌드 시각 (UTC ISO), build.py 가 채움")
     s = re.sub(r'(<p class="sub">)\d{4}-\d{2}-\d{2} 기준', rf"\g<1>{asof} 기준", s, count=1)
     open(PAGE, "w", encoding="utf-8").write(s)
 
@@ -107,6 +109,7 @@ def main():
     s2 = re.sub(r"const IDX_ALT = /\*IDX_ALT\*/.*?;\n", lambda m: "const IDX_ALT = /*IDX_ALT*/" + json.dumps(alt, separators=(",", ":")) + ";\n", s, count=1)
     assert s2 != s or "/*IDX_ALT*/" in s
     open(PAGE, "w", encoding="utf-8").write(s2)
+    json.dump({"built": built, "asof": asof}, open(os.path.join(ROOT, "docs", "version.json"), "w"))
     print("built", PAGE, asof, f"{len(s2) / 1e6:.2f} MB", dt.datetime.now().isoformat(timespec="seconds"))
 
 

@@ -2,7 +2,8 @@ name: update
 
 on:
   schedule:
-    - cron: "30 22 * * 1-5"   # 평일 22:30 UTC (미국 장 마감 뒤, 한국 07:30): 주가
+    - cron: "30 22 * * 1-5"   # 평일 22:30 UTC (미국 장 마감 뒤, 한국 07:30): 종가
+    - cron: "*/30 13-20 * * 1-5"  # 미국 장중 30분마다 (13:00~20:30 UTC; 서머타임이 아닐 때 마지막 30분은 22:30 종가 갱신이 채움): 주가
     - cron: "0 3 * * 6"       # 토요일 03:00 UTC: 구성 종목 · 실적 · 컨센서스 전체
   workflow_dispatch:
     inputs:
@@ -45,4 +46,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A data docs
           git diff --cached --quiet || git commit -m "data: $(date -u +%F) ${{ github.event.schedule || inputs.mode }}"
+          git pull --rebase -q || true
           git push
