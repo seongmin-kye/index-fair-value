@@ -1,7 +1,7 @@
 """data/ → docs/index.html.
 
 페이지의 데이터 줄(DATA · M7_DATA · EXTRA · SOXX_HIST · SOXL_HIST · SOXX_PRICE · IDX_ALT)과 기준일 문구만 바꾸고,
-QQQ·SPY 는 같은 페이지 계산 코드를 node 로 돌린 결과를 IDX_ALT 로 넣는다.
+QQQ·SPY(5·10년)와 SOXX 10년 백테스트는 같은 페이지 계산 코드를 node 로 돌린 결과를 IDX_ALT 로 넣는다.
 """
 import datetime as dt
 import json
@@ -95,16 +95,20 @@ def main():
     s = re.sub(r'(<p class="sub">)\d{4}-\d{2}-\d{2} 기준', rf"\g<1>{asof} 기준", s, count=1)
     open(PAGE, "w", encoding="utf-8").write(s)
 
-    # QQQ · SPY: 방금 쓴 페이지의 계산 코드로
+    # QQQ · SPY · SOXX@10: 방금 쓴 페이지의 계산 코드로
     known = {e["t"]: e for e in soxx + m7}
     alt = {}
     with tempfile.TemporaryDirectory() as tmp:
-        for k in ("QQQ", "SPY"):
-            df, hf, of = (os.path.join(tmp, f"{x}_{k}.json") for x in ("data", "hist", "res"))
-            json.dump(index_data(k, known), open(df, "w"))
-            json.dump(hist[k], open(hf, "w"))
-            subprocess.run(["node", os.path.join(ROOT, "scripts", "run_idx.js"), PAGE, df, hf, of], check=True)
-            alt[k] = json.load(open(of))
+        for k in ("SOXX", "QQQ", "SPY"):
+            df, hf = (os.path.join(tmp, f"{x}_{k}.json") for x in ("data", "hist"))
+            if k != "SOXX":  # SOXX 는 페이지 데이터 그대로 (5년은 브라우저가 직접 계산)
+                json.dump(index_data(k, known), open(df, "w"))
+                json.dump(hist[k], open(hf, "w"))
+            for span in ((10,) if k == "SOXX" else (5, 10)):
+                key, of = k + ("@10" if span == 10 else ""), os.path.join(tmp, f"res_{k}_{span}.json")
+                args = ["-", "-"] if k == "SOXX" else [df, hf]
+                subprocess.run(["node", os.path.join(ROOT, "scripts", "run_idx.js"), PAGE, *args, of, str(span)], check=True)
+                alt[key] = json.load(open(of))
     s = open(PAGE, encoding="utf-8").read()
     s2 = re.sub(r"const IDX_ALT = /\*IDX_ALT\*/.*?;\n", lambda m: "const IDX_ALT = /*IDX_ALT*/" + json.dumps(alt, separators=(",", ":")) + ";\n", s, count=1)
     assert s2 != s or "/*IDX_ALT*/" in s
