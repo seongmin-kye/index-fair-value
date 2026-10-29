@@ -2,7 +2,8 @@
 
   python3 scripts/update.py prices            # 매일: 종목·지수 월봉 종가(이번 달은 최근 종가)와 컨센서스 PER 의 주가
   python3 scripts/update.py full [TICKER ...] # 매주: Zacks 분기 EPS 로 최근 24개월 TTM 다시 계산 + 연도별 컨센서스
-  python3 scripts/update.py holdings          # 매주: SOXX·QQQ·SPY 구성 종목·비중 (새 종목은 10년 이력부터 받음)
+  python3 scripts/update.py holdings          # 매주: SOXX·QQQ·SPY 구성 종목·비중 (새 종목은 START 부터 이력을 받음)
+  python3 scripts/update.py backfill [TICKER ...]  # 한 번: START 까지 앞쪽 이력을 채움 (기존 행은 그대로)
 
 데이터: data/stocks/{T}.json (종목), data/holdings/{IDX}.json, data/index/{IDX}.json ([[월, 종가], ...]).
 24개월보다 오래된 행은 건드리지 않는다 (META 의 SEC 이력처럼 손으로 보정한 구간을 지키기 위해).
@@ -23,7 +24,7 @@ import forward_per as fp  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
-START = dt.date(2016, 10, 1)
+START = dt.date(2012, 1, 1)  # Zacks 분기 실적이 대체로 2012년 무렵부터 있음 (TTM 은 4분기가 쌓인 뒤부터)
 INDEXES = {"SOXX": "SOXX", "SOXL": "SOXL", "QQQ": "QQQ", "SPY": "SPY"}
 ZUA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
                      "(KHTML, like Gecko) Chrome/120 Safari/537.36"}
@@ -120,7 +121,8 @@ def update_prices_one(t):
 def update_index(k):
     path = os.path.join(DATA, "index", f"{k}.json")
     h = load(path, [])
-    months, last, _, _ = monthly(INDEXES[k], "3mo" if h else "11y")
+    full = not h or h[0][0][:7] > START.strftime("%Y-%m")
+    months, last, _, _ = monthly(INDEXES[k], "15y" if full else "3mo")
     by = {r[0][:7]: r for r in h}
     for ym, c in months:
         if ym < START.strftime("%Y-%m"):
@@ -218,6 +220,36 @@ def update_full_one(t, name=None):
     return f"{t}: " + "; ".join(errs) if errs else None
 
 
+def backfill_one(t):
+    """series 첫 달보다 앞선 달을 START 까지 Zacks TTM · Yahoo 종가로 채운다. 기존 행은 건드리지 않는다."""
+    st = load(stock_path(t))
+    if st.get("hist_src") != "zacks" or not st["series"]:
+        return None
+    first = st["series"][0][0][:7]
+    if first <= START.strftime("%Y-%m"):
+        return None
+    try:
+        months, _, _, _ = monthly(st["price_ticker"], "15y")
+        ttm = ttm_points(zacks_quarters(t))
+    except Exception as e:
+        return f"{t}: {e}"
+    rows = []
+    for ym, close in months:
+        if ym >= first or ym < START.strftime("%Y-%m"):
+            continue
+        day = dt.date(int(ym[:4]), int(ym[5:]), 1)
+        known = [(rd, v) for rd, v in ttm if rd <= month_end(day)]
+        if not known or (day - known[-1][0]).days > 400:
+            continue
+        v = round(known[-1][1], 4)
+        rows.append([f"{ym}-01", round(close / v, 2) if v > 0 else None, v, close])
+    if rows:
+        st["series"] = rows + st["series"]
+        save(stock_path(t), st)
+    time.sleep(1.0)
+    return None
+
+
 # ---------- 구성 종목 ----------
 
 def holdings(k):
@@ -255,6 +287,10 @@ def main():
         errs = run(update_prices_one, args or all_tickers(), 8)
     elif mode == "full":
         errs = run(update_full_one, args or all_tickers(), 6)
+    elif mode == "backfill":
+        for k in INDEXES:
+            update_index(k)
+        errs = run(backfill_one, args or all_tickers(), 6)
     elif mode == "holdings":
         errs, new = [], {}
         for k in ("SOXX", "QQQ", "SPY"):

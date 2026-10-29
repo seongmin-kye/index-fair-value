@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "prices | full"
+        description: "prices | full | backfill"
         default: prices
 
 permissions:
@@ -38,6 +38,9 @@ jobs:
           python3 scripts/update.py holdings
           python3 scripts/update.py full
           python3 scripts/update.py prices
+      - name: 앞쪽 이력 채우기 (한 번)
+        if: inputs.mode == 'backfill'
+        run: python3 scripts/update.py backfill
       - name: 페이지 빌드
         run: python3 scripts/build.py
       - name: 커밋
