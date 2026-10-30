@@ -608,7 +608,7 @@ const compact = (v) => {
 };
 
 // forward PER 은 그 회계연도가 끝나는 날에 찍는다. 과거선(그 시점까지 12개월 EPS)과 같은 뜻이 되도록.
-const BUILT = "2026-10-30T22:32:59+00:00";  // 빌드 시각 (UTC ISO), build.py 가 채움
+const BUILT = "2026-10-30T23:48:36+00:00";  // 빌드 시각 (UTC ISO), build.py 가 채움
 const ASOF = new Date(Math.max(...DATA.filter((d) => d.series.length && d.price_currency === "USD").map((d) => new Date(d.series[d.series.length - 1][0]).getTime())));
 const fyEnd = (c) => new Date(c.fy[0], c.fy[1], 0);  // 결산월 말일 (로컬 시각)
 const ymd = (t) => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
