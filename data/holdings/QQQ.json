@@ -45,13 +45,13 @@
 2.91
 ],
 [
-"GOOG",
-"Alphabet Inc",
+"SPCX",
+"Space Exploration Technologies Corp",
 2.81
 ],
 [
-"SPCX",
-"Space Exploration Technologies Corp",
+"GOOG",
+"Alphabet Inc",
 2.81
 ],
 [
@@ -190,13 +190,13 @@
 0.57
 ],
 [
-"FTNT",
-"Fortinet Inc",
+"ARM",
+"ARM Holdings PLC",
 0.55
 ],
 [
-"ARM",
-"ARM Holdings PLC",
+"FTNT",
+"Fortinet Inc",
 0.55
 ],
 [
@@ -230,13 +230,13 @@
 0.4
 ],
 [
-"MAR",
-"Marriott International Inc/MD",
+"ADBE",
+"Adobe Inc",
 0.39
 ],
 [
-"ADBE",
-"Adobe Inc",
+"MAR",
+"Marriott International Inc/MD",
 0.39
 ],
 [
@@ -280,16 +280,6 @@
 0.32
 ],
 [
-"CMCSA",
-"Comcast Corp",
-0.32
-],
-[
-"CTAS",
-"Cintas Corp",
-0.32
-],
-[
 "DASH",
 "DoorDash Inc",
 0.32
@@ -300,13 +290,23 @@ null,
 0.32
 ],
 [
-"REGN",
-"Regeneron Pharmaceuticals Inc",
-0.31
+"CTAS",
+"Cintas Corp",
+0.32
+],
+[
+"CMCSA",
+"Comcast Corp",
+0.32
 ],
 [
 "MDLZ",
 "Mondelez International Inc",
+0.31
+],
+[
+"REGN",
+"Regeneron Pharmaceuticals Inc",
 0.31
 ],
 [
@@ -315,23 +315,23 @@ null,
 0.3
 ],
 [
-"MPWR",
-"Monolithic Power Systems Inc",
-0.29
-],
-[
 "TER",
 "Teradyne Inc",
 0.29
 ],
 [
-"ORLY",
-"O'Reilly Automotive Inc",
-0.28
+"MPWR",
+"Monolithic Power Systems Inc",
+0.29
 ],
 [
 "ABNB",
 "Airbnb Inc",
+0.28
+],
+[
+"ORLY",
+"O'Reilly Automotive Inc",
 0.28
 ],
 [
@@ -345,23 +345,18 @@ null,
 0.27
 ],
 [
-"NXPI",
-"NXP Semiconductors NV",
-0.25
-],
-[
 "ALAB",
 "Astera Labs Inc",
 0.25
 ],
 [
-"NBIS",
-"Nebius Group NV",
-0.24
+"NXPI",
+"NXP Semiconductors NV",
+0.25
 ],
 [
-"FAST",
-"Fastenal Co",
+"PCAR",
+"PACCAR Inc",
 0.24
 ],
 [
@@ -375,8 +370,13 @@ null,
 0.24
 ],
 [
-"PCAR",
-"PACCAR Inc",
+"FAST",
+"Fastenal Co",
+0.24
+],
+[
+"NBIS",
+"Nebius Group NV",
 0.24
 ],
 [
@@ -385,13 +385,13 @@ null,
 0.23
 ],
 [
-"FANG",
-"Diamondback Energy Inc",
+"PDD",
+"PDD Holdings Inc",
 0.21
 ],
 [
-"PDD",
-"PDD Holdings Inc",
+"FANG",
+"Diamondback Energy Inc",
 0.21
 ],
 [
@@ -410,6 +410,11 @@ null,
 0.19
 ],
 [
+"ADSK",
+"Autodesk Inc",
+0.18
+],
+[
 "CCEP",
 "Coca-Cola Europacific Partners PLC",
 0.18
@@ -420,14 +425,14 @@ null,
 0.18
 ],
 [
-"ADSK",
-"Autodesk Inc",
-0.18
-],
-[
 "MCHP",
 "Microchip Technology Inc",
 0.18
+],
+[
+"EXC",
+"Exelon Corp",
+0.17
 ],
 [
 "IDXX",
@@ -437,11 +442,6 @@ null,
 [
 "KDP",
 "Keurig Dr Pepper Inc",
-0.17
-],
-[
-"EXC",
-"Exelon Corp",
 0.17
 ],
 [
@@ -460,18 +460,13 @@ null,
 0.16
 ],
 [
-"PAYX",
-"Paychex Inc",
-0.15
-],
-[
 "TRI",
 "Thomson Reuters Corp",
 0.15
 ],
 [
-"ODFL",
-"Old Dominion Freight Line Inc",
+"PAYX",
+"Paychex Inc",
 0.15
 ],
 [
@@ -480,13 +475,13 @@ null,
 0.15
 ],
 [
-"AXON",
-"Axon Enterprise Inc",
-0.14
+"ODFL",
+"Old Dominion Freight Line Inc",
+0.15
 ],
 [
-null,
-"CME E-Mini NASDAQ 100 Index Future",
+"AXON",
+"Axon Enterprise Inc",
 0.14
 ],
 [
@@ -495,18 +490,23 @@ null,
 0.14
 ],
 [
+null,
+"CME E-Mini NASDAQ 100 Index Future",
+0.14
+],
+[
 "DXCM",
 "Dexcom Inc",
 0.13
 ],
 [
-"GEHC",
-"GE HealthCare Technologies Inc",
+"ALNY",
+"Alnylam Pharmaceuticals Inc",
 0.12
 ],
 [
-"ALNY",
-"Alnylam Pharmaceuticals Inc",
+"GEHC",
+"GE HealthCare Technologies Inc",
 0.12
 ],
 [
