@@ -31,7 +31,15 @@ check("B2 ARM 규칙 문구에 '이력' 표시", /이력/.test(arm.now.rule), ar
 const alab = sfvCompute(find("ALAB"));
 const alabObs = Object.entries(find("ALAB").fpe).filter(([i]) => +i >= ASOF_M - 47 && +i <= ASOF_M - 12).map(([, v]) => v);
 check("B2 ALAB 자기 관측 중앙값 (직전 3년 관측 9개월 이상)", /이력 짧음/.test(alab.now.rule) && alabObs.length >= 9 && Math.abs(alab.now.pe - median(alabObs)) < 1e-9, alab.now.pe.toFixed(1) + " " + alab.now.rule);
-check("B2 CBRS (관측 0) 은 나머지 종목 중앙값", /나머지/.test(sfvCompute(find("CBRS")).now.rule));
+check("B2 CBRS (관측 0) 은 계산 안 함", sfvCompute(find("CBRS")).now.pe == null && /계산 안 함/.test(sfvCompute(find("CBRS")).now.rule));
+// B6: 종목별 목표 PER 이 달 사이에 1.5배 넘게 튀지 않는다 (나머지 종목 중앙값 ↔ 자기 기준 전환이 없어야 함). 메모리는 규칙 전환이 있어 제외
+for (const s of SFV_LIST.concat(FV_M7)) {
+  if (MEMORY.has(s.d.t)) continue;
+  const c = FV_M7.includes(s) ? m7StockCompute(s) : sfvCompute(s), h = c.hist.filter((x) => x.pe);
+  let bad = null;
+  for (let i = 1; i < h.length; i++) { if (h[i].x - h[i - 1].x !== 1) continue; const r = h[i].pe / h[i - 1].pe; if (r > 1.5 || r < 1 / 1.5) bad = h[i - 1].label + " " + h[i - 1].pe.toFixed(1) + "→" + h[i].pe.toFixed(1); }  // 계산 안 한 달을 사이에 둔 비교는 제외 (바닥 전후는 다른 국면)
+  if (bad || s.d.t === "ARM" || s.d.t === "CRDO") check("B6 " + s.d.t + " 목표 PER 월간 변화 1.5배 미만", !bad, bad);
+}
 check("B2 지수 기준(targetsAt)도 ARM 에 자기 중앙값", TG_NOW.get(find("ARM")) > 50, TG_NOW.get(find("ARM")).toFixed(1));
 
 // B3: 격자(창 줄이기)와 실제 목표 PER 이 같은 규칙 → TSLA 2025-10 절벽(95→28) 없음
