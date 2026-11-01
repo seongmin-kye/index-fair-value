@@ -272,7 +272,7 @@ SERIES, TRUST_CIK = "S000004354", "1100663"  # iShares Semiconductor ETF (SOXX)
 
 
 def sec_ua():
-    return {"User-Agent": os.environ.get("SEC_UA") or "index-fair-value (https://github.com/seongmin-kye/index-fair-value)"}
+    return {"User-Agent": os.environ.get("SEC_UA") or "index-fair-value/1.0 (https://github.com/seongmin-kye/index-fair-value; seongmin-kye@users.noreply.github.com)"}
 
 
 def _local(tag):
@@ -289,18 +289,37 @@ def _text(el, name, default=""):
     return (c.text or "").strip() if c is not None else default
 
 
+def nport_atom(xml_text):
+    """EDGAR atom 피드 -> [(accession, 공시일, 공시종류)], 최신 먼저. 필드는 entry 하위(content)에 있다."""
+    out = []
+    for e in ET.fromstring(xml_text).iter():
+        if _local(e.tag) != "entry":
+            continue
+        f = {}
+        for c in e.iter():
+            n = _local(c.tag)
+            if n in ("accession-number", "filing-date", "filing-type") and n not in f:
+                f[n] = (c.text or "").strip()
+        if f.get("accession-number"):
+            out.append((f["accession-number"], f.get("filing-date", ""), f.get("filing-type", "")))
+    return sorted(out, key=lambda x: x[1], reverse=True)
+
+
 def nport_filings():
-    """SOXX 시리즈 N-PORT 공시 [(accession, 공시일)], 최신 먼저."""
+    """SOXX 시리즈 N-PORT 공시 [(accession, 공시일, 종류)], 최신 먼저."""
     url = (f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={SERIES}"
            "&type=NPORT-P&count=100&output=atom")
-    root = ET.fromstring(fetch(url, sec_ua()))
-    out = []
-    for e in root.iter():
-        if _local(e.tag) == "entry":
-            acc, day = _text(e, "accession-number"), _text(e, "filing-date")
-            if acc:
-                out.append((acc, day))
-    return sorted(out, key=lambda x: x[1], reverse=True)
+    return nport_atom(fetch(url, sec_ua()))
+
+
+def pick_filings(parsed):
+    """[(분기말, 종류, 공시일, rows)] -> {분기말: rows}. 원본(NPORT-P)이 정정(/A)보다 우선, 같은 종류면 늦은 공시일."""
+    best = {}
+    for date, typ, day, rows in parsed:
+        key = (typ != "NPORT-P/A", day)
+        if date not in best or key > best[date][0]:
+            best[date] = (key, rows)
+    return {d: v[1] for d, v in best.items()}
 
 
 def nport_parse(xml_text):
@@ -377,21 +396,22 @@ def resolve_ids(rows, ids, zacks_names):
 
 def update_nport():
     """없는 분기의 N-PORT 를 받아 data/holdings/SOXX/nport/{분기말}.json 에 저장. 오류 문자열 목록."""
-    errs, found = [], {}
+    errs, parsed = [], []
     d = os.path.join(DATA, "holdings", "SOXX", "nport")
     os.makedirs(d, exist_ok=True)
     try:
         filings = nport_filings()
     except Exception as e:
         return [f"nport 목록: {e}"]
-    for acc, day in sorted(filings, key=lambda x: x[1]):  # 늦게 낸 공시(정정)가 이긴다
+    for acc, day, typ in filings:
         try:
             url = f"https://www.sec.gov/Archives/edgar/data/{TRUST_CIK}/{acc.replace('-', '')}/primary_doc.xml"
             date, rows = nport_parse(fetch(url, sec_ua()))
-            found[date] = rows
+            parsed.append((date, typ, day, rows))
         except Exception as e:
             errs.append(f"nport {acc}: {e}")
         time.sleep(0.2)
+    found = pick_filings(parsed)
     ids_path = os.path.join(DATA, "holdings", "ids.json")
     ids = load(ids_path, {})
     zacks = {t: n for t, n, _ in load(os.path.join(DATA, "holdings", "SOXX.json"), []) if t}

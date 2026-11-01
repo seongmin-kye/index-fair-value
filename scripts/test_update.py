@@ -86,6 +86,27 @@ class NportTest(unittest.TestCase):
     def test_sec_ua_default(self):
         os.environ.pop("SEC_UA", None)
         self.assertIn("github.com/seongmin-kye/index-fair-value", update.sec_ua()["User-Agent"])
+        os.environ["SEC_UA"] = ""
+        try:
+            self.assertIn("github.com/seongmin-kye/index-fair-value", update.sec_ua()["User-Agent"])
+        finally:
+            os.environ.pop("SEC_UA", None)
+
+    def test_nport_atom_reads_content_nested_fields(self):
+        xml = """<feed xmlns="http://www.w3.org/2005/Atom">
+<entry><content type="text/xml"><accession-number>A-1</accession-number><filing-date>2026-08-25</filing-date><filing-type>NPORT-P</filing-type></content></entry>
+<entry><content type="text/xml"><accession-number>A-2</accession-number><filing-date>2026-07-13</filing-date><filing-type>NPORT-P/A</filing-type></content></entry>
+</feed>"""
+        self.assertEqual(update.nport_atom(xml), [("A-1", "2026-08-25", "NPORT-P"), ("A-2", "2026-07-13", "NPORT-P/A")])
+
+    def test_pick_filings_original_beats_amendment(self):
+        p = [("2026-06-30", "NPORT-P", "2026-08-01", "orig"),
+             ("2026-06-30", "NPORT-P/A", "2026-09-01", "amend"),
+             ("2026-03-31", "NPORT-P/A", "2026-05-01", "a1"),
+             ("2026-03-31", "NPORT-P/A", "2026-06-01", "a2"),
+             ("2025-12-31", "NPORT-P", "2026-02-01", "o1"),
+             ("2025-12-31", "NPORT-P", "2026-03-01", "o2")]
+        self.assertEqual(update.pick_filings(p), {"2026-06-30": "orig", "2026-03-31": "a2", "2025-12-31": "o2"})
 
 
 if __name__ == "__main__":
