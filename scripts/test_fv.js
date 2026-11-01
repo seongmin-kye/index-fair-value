@@ -71,6 +71,8 @@ check("I2 비교선에 Infinity/NaN 없음", FV_HIST.every((h) => h.fvI == null 
 check("I2 계산 가능 비중 절반 미만이면 null", eyAt(monthIdx("2021-09"), { w: new Map([[find("NVDA"), 10]]), neutral: 0, cash: 90, src: "nport" }) === null);
 check("I3 BT 비교 달 수 30~45, idxErr 유한", BT.cmpN >= 30 && BT.cmpN <= 45 && isFinite(BT.idxErr) && isFinite(BT.sumErrCmp), BT.cmpN + " " + BT.idxErr.toFixed(3));
 check("I4 기본 basis = sum", fvView.basis === "sum");
+const nv = find("NVDA"), eyLoss = eyNow(null, { w: new Map([[nv, 60], [{ px: 100, eN: -1, path: {} }, 40]]), neutral: 0, cash: 0, src: "now" });
+check("I5 eyNow: 적자(EPS ≤ 0) 종목은 분자·분모 모두에서 빠짐", Math.abs(eyLoss - nv.eN / nv.px) < 1e-12, eyLoss + " vs " + nv.eN / nv.px);
 
 console.log(fails.length ? "\\n" + fails.length + " failed" : "\\nall passed");
 process.exit(fails.length ? 1 : 0);
