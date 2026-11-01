@@ -142,12 +142,13 @@ def fetch_wisereport_eps(opener, ticker):
 
 def build_rows(sources, quarters, years, growth_override):
     """달력연도별로 출처 EPS 를 모으고, 끝난 연도는 실적, 빈 연도는 성장률로 추정한다."""
-    by_cy = {}  # cy -> {"fy": (y, m), "eps": [..], "n": [..]}
-    for src in sources.values():
+    by_cy = {}  # cy -> {"fy": (y, m), "eps": [..], "n": [..], "src": {출처: eps}}
+    for name, src in sources.items():
         for (fy, fm), (eps, n) in src.items():
-            row = by_cy.setdefault(calendar_year(fy, fm), {"fy": (fy, fm), "eps": [], "n": []})
+            row = by_cy.setdefault(calendar_year(fy, fm), {"fy": (fy, fm), "eps": [], "n": [], "src": {}})
             row["eps"].append(eps)
             row["n"].append(n)
+            row["src"][name] = eps
 
     this_year = datetime.date.today().year
     known = sorted(cy for cy in by_cy if cy >= this_year)
@@ -178,7 +179,7 @@ def build_rows(sources, quarters, years, growth_override):
         if cy in by_cy:
             r = by_cy[cy]
             rows.append({"i": i, "cy": cy, "fy": r["fy"], "eps": (min(r["eps"]), max(r["eps"])),
-                         "n": [x for x in r["n"] if x is not None], "est": False})
+                         "n": [x for x in r["n"] if x is not None], "est": False, "src": r["src"]})
         elif cy < known[0]:
             # 이미 끝난 회계연도라 컨센서스 대신 분기 실적 합계를 쓴다 (예: 8월 결산 종목의 올해)
             k = known[0] - cy

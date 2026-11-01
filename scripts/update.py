@@ -195,7 +195,8 @@ def consensus(st):
     op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
     res = fp.compute(st["fwd_ticker"], 5, None, op)
     st["fwd"] = [{"per": c.get("per"), "est": c["est"], "actual": bool(c.get("actual")), "fy": c["fy"], "eps": c.get("eps"),
-                  "thin": (not c["est"]) and bool(c["n"]) and max(c["n"]) <= 3} for c in res["rows"]]
+                  "thin": (not c["est"]) and bool(c["n"]) and max(c["n"]) <= 3,
+                  **({"src": c["src"]} if c.get("src") else {})} for c in res["rows"]]  # src: 출처별 EPS (build.unify 가 씀)
     st["fwd_price"], st["fwd_cur"] = res["price"], res["currency"]
 
 

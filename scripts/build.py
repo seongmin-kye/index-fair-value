@@ -35,7 +35,7 @@ def soxx_entry(t, name, w):
     pers = [r[1] for r in d["series"]]
     valid = [p for p in pers if p is not None and p <= CAP]
     s = d["series"]
-    return {**{k: v for k, v in d.items() if k != "hist_src"}, "name": d.get("name") or name, "w": w,
+    return {**{k: v for k, v in unify(d).items() if k != "hist_src"}, "name": d.get("name") or name, "w": w,
             "avg": round(sum(valid) / len(valid), 1) if len(valid) >= 12 else None,
             "n_valid": len(valid), "n_neg": sum(1 for p in pers if p is None),
             "n_over": sum(1 for p in pers if p is not None and p > CAP),
@@ -43,14 +43,36 @@ def soxx_entry(t, name, w):
 
 
 def unify(d):
-    """두 출처(Zacks 조정 · Yahoo GAAP/현지통화) 추정이 크게 다르면 과거 이력(Zacks 조정 EPS)에 가까운 쪽 하나로."""
+    """두 출처(Zacks 조정 · Yahoo GAAP/주식보상 처리 차이) 추정이 1.5배 넘게 다르면 과거 이력(Zacks 조정 TTM)에 가까운 출처 하나만 쓴다.
+
+    출처별 값(src)이 있으면 고른 출처가 없는 연도(보통 Zacks 만 있는 +2·+3년)와 그 위에 성장률로 이어 붙인 추정 연도는 비운다 —
+    다른 잣대의 EPS 를 섞으면 경로가 꺾인다(TSLA: Yahoo 2027 2.16 → Zacks 2028 1.39). 페이지가 성장률로 다시 채운다.
+    src 가 없는(옛) 데이터는 최소·최대 중 가까운 쪽만 고른다."""
     ttm = next((x[2] for x in reversed(d["series"]) if x[2]), None)
     c0 = next((c for c in d["fwd"] if c.get("eps") and c["eps"][0] > 0), None)
-    if ttm and ttm > 0 and c0 and c0["eps"][1] / c0["eps"][0] > 1.5:
+    if not (ttm and ttm > 0 and c0 and c0["eps"][1] / c0["eps"][0] > 1.5):
+        return d
+    src = c0.get("src")
+    if src and len(src) >= 2:
+        name = min(src, key=lambda k: abs(math.log(src[k] / ttm)) if src[k] > 0 else math.inf)
+        dropped = False
+        for c in d["fwd"]:
+            if c.get("est"):
+                keep = not dropped
+            else:
+                keep = bool(c.get("src")) and name in c["src"]
+                if keep:
+                    c["eps"], c["per"] = [c["src"][name]] * 2, [d["fwd_price"] / c["src"][name]] * 2 if c["src"][name] > 0 else None
+                elif c.get("eps"):
+                    dropped = True
+            if not keep:
+                c["eps"] = c["per"] = None
+            c["src_used"] = name
+    else:
         k = min((0, 1), key=lambda j: abs(math.log(c0["eps"][j] / ttm)))
         for c in d["fwd"]:
             if c.get("eps"):
-                c["eps"] = [c["eps"][k]] * 2
+                c["eps"], c["per"] = [c["eps"][k]] * 2, [d["fwd_price"] / c["eps"][k]] * 2 if c["eps"][k] > 0 else None
     return d
 
 
