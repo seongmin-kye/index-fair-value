@@ -32,7 +32,7 @@ const alab = sfvCompute(find("ALAB"));
 const alabObs = Object.entries(find("ALAB").fpe).filter(([i]) => +i >= ASOF_M - 47 && +i <= ASOF_M - 12).map(([, v]) => v);
 check("B2 ALAB 자기 관측 중앙값 (직전 3년 관측 9개월 이상)", /이력 짧음/.test(alab.now.rule) && alabObs.length >= 9 && Math.abs(alab.now.pe - median(alabObs)) < 1e-9, alab.now.pe.toFixed(1) + " " + alab.now.rule);
 check("B2 CBRS (관측 0) 은 나머지 종목 중앙값", /나머지/.test(sfvCompute(find("CBRS")).now.rule));
-check("B2 지수 기준(targetsAt)도 ARM 에 자기 중앙값", TG_NOW.get(find("ARM")) > 50, TG_NOW.get(find("ARM")).toFixed(1));
+check("B2 지수 합산(TG_SUM_NOW)도 ARM 에 자기 중앙값", TG_SUM_NOW.get(find("ARM")) > 50, TG_SUM_NOW.get(find("ARM")).toFixed(1));
 
 // B3: 격자(창 줄이기)와 실제 목표 PER 이 같은 규칙 → TSLA 2025-10 절벽(95→28) 없음
 const tsla = m7StockCompute(find("TSLA"));
@@ -54,7 +54,17 @@ check("W2 오늘은 Zacks 현재 비중 (합 99~100)", W2 && W2.src === "now" &&
 const sum3 = [...W3.w.values()].reduce((a, b) => a + b, 0) + W3.neutral;
 check("W3 2021-11 비중: 굴린 뒤에도 합 = 분기 합, NaN 없음, XLNX 는 중립에", W3.src === "nport" && isFinite(sum3) && Math.abs(sum3 - ([...W4.w.values()].reduce((a, b) => a + b, 0) + W4.neutral)) < 1e-6 && W3.neutral > 3 && !W3.w.has(find("XLNX") || {}), sum3.toFixed(2) + " neutral " + W3.neutral.toFixed(2));
 check("W4 2021-09 ALAB 비중 0, NVDA 7~8", !W4.w.get(find("ALAB")) && W4.w.get(find("NVDA")) > 7 && W4.w.get(find("NVDA")) < 8.5);
-check("W4 2021-10 NVDA 비중이 10월 주가만큼 움직임", Math.abs(weightsAt(monthIdx("2021-10")).w.get(find("NVDA")) / W4.w.get(find("NVDA")) - find("NVDA").byM[monthIdx("2021-10")][3] / find("NVDA").byM[monthIdx("2021-09")][3]) < 0.1);
+const W10 = weightsAt(monthIdx("2021-10")), pxM = (t, k) => find(t).byM[monthIdx(k)][3];
+const relW = (W10.w.get(find("NVDA")) / W4.w.get(find("NVDA"))) / (W10.w.get(find("AMD")) / W4.w.get(find("AMD")));
+const relP = (pxM("NVDA", "2021-10") / pxM("NVDA", "2021-09")) / (pxM("AMD", "2021-10") / pxM("AMD", "2021-09"));
+check("W4 2021-10 NVDA·AMD 비중 비가 10월 주가 비만큼 움직임", Math.abs(relW - relP) < 1e-9, relW.toFixed(6) + " vs " + relP.toFixed(6));
+const h1909 = FV_HIST.find((h) => h.label === "2019-08"), h2109 = FV_HIST.find((h) => h.label === "2021-09"), hNow = FV_HIST.at(-1);
+check("W5 2019-08 적정가 없음(noW)", h1909.fv2 == null && h1909.noW);
+check("W6 2021-09 적정가 있음, own+peer+neutral = 100", h2109.fv2 > 0 && Math.abs(h2109.own + h2109.peer + h2109.neutral - 100) < 1e-6, [h2109.own, h2109.peer, h2109.neutral].map((v) => v.toFixed(1)).join("/"));
+check("W6 2021-09 XLNX 중립 ≥ 3%p 포함", h2109.neutral >= 3);
+check("W7 오늘 적정가는 현재 비중 (ALAB 기여 있음)", TG_SUM_NOW.has(find("ALAB")) && FV_PTS[0].fv2 > 0);
+check("W8 BT 는 최근 5년(ASOF_M-71 ~ ASOF_M-12), 61개월 이하, sumErr 0.05~0.5", BT.T0 === ASOF_M - 11 - 12 * GRID_SPAN && BT.n <= 61 && BT.sumErr > 0.05 && BT.sumErr < 0.5, BT.n + " " + BT.sumErr.toFixed(3));
+check("W9 격자 전역 제거", typeof GRID === "undefined" && typeof targetsAt === "undefined");
 
 console.log(fails.length ? "\\n" + fails.length + " failed" : "\\nall passed");
 process.exit(fails.length ? 1 : 0);
