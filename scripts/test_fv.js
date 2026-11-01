@@ -29,7 +29,8 @@ const arm = sfvCompute(find("ARM"));
 check("B2 ARM 자기 forward PER 중앙값 사용 (50~100배)", arm.now.pe > 50 && arm.now.pe < 100, arm.now.pe.toFixed(1) + " " + arm.now.rule);
 check("B2 ARM 규칙 문구에 '이력' 표시", /이력/.test(arm.now.rule), arm.now.rule);
 const alab = sfvCompute(find("ALAB"));
-check("B2 ALAB 자기 관측 중앙값 (9개월)", alab.now.pe > 35 && alab.now.pe < 60, alab.now.pe.toFixed(1));
+const alabObs = Object.entries(find("ALAB").fpe).filter(([i]) => +i >= ASOF_M - 47 && +i <= ASOF_M - 12).map(([, v]) => v);
+check("B2 ALAB 자기 관측 중앙값 (직전 3년 관측 9개월 이상)", /이력 짧음/.test(alab.now.rule) && alabObs.length >= 9 && Math.abs(alab.now.pe - median(alabObs)) < 1e-9, alab.now.pe.toFixed(1) + " " + alab.now.rule);
 check("B2 CBRS (관측 0) 은 나머지 종목 중앙값", /나머지/.test(sfvCompute(find("CBRS")).now.rule));
 check("B2 지수 기준(targetsAt)도 ARM 에 자기 중앙값", TG_NOW.get(find("ARM")) > 50, TG_NOW.get(find("ARM")).toFixed(1));
 
