@@ -87,7 +87,7 @@ check("W7 오늘 적정가는 현재 비중 (ALAB 기여 있음)", TG_SUM_NOW.ha
 check("W8 BT 는 최근 5년(ASOF_M-71 ~ ASOF_M-12), 61개월 이하, sumErr 0.05~0.5", BT.T0 === ASOF_M - 11 - 12 * GRID_SPAN && BT.n <= 61 && BT.sumErr > 0.05 && BT.sumErr < 0.5, BT.n + " " + BT.sumErr.toFixed(3));
 check("W9 격자 전역 제거", typeof GRID === "undefined" && typeof targetsAt === "undefined");
 check("I1 IDX_PER 2021-09 는 15~60", IDX_PER[monthIdx("2021-09")] > 15 && IDX_PER[monthIdx("2021-09")] < 60, IDX_PER[monthIdx("2021-09")]);
-check("I1 비교선 시작 2022-08 이후, 그 전 null", FV_HIST.find((h) => h.fvI).label >= "2022-08" && FV_HIST.find((h) => h.label === "2022-06").fvI == null);
+check("I1 비교선 시작 = 2022-08 (N-PORT 2019-09 + 최소 2년 + 12개월), 그 전 null", FV_HIST.find((h) => h.fvI).label === "2022-08" && FV_HIST.find((h) => h.label === "2022-06").fvI == null);
 check("I2 비교선에 Infinity/NaN 없음", FV_HIST.every((h) => h.fvI == null || isFinite(h.fvI)) && FV_PTS.every((p) => p.fvI == null || isFinite(p.fvI)));
 check("I2 계산 가능 비중 절반 미만이면 null", eyAt(monthIdx("2021-09"), { w: new Map([[find("NVDA"), 10]]), neutral: 0, cash: 90, src: "nport" }) === null);
 check("I3 BT 비교 달 수 30~45, idxErr 유한", BT.cmpN >= 30 && BT.cmpN <= 45 && isFinite(BT.idxErr) && isFinite(BT.sumErrCmp), BT.cmpN + " " + BT.idxErr.toFixed(3));
@@ -98,8 +98,18 @@ check("I5 eyNow: 적자(EPS ≤ 0) 종목은 분자·분모 모두에서 빠짐"
 // E: 비교선 이익수익률도 정상화 EPS (histRatio · nowRatio 와 같은 EPS)
 const W_MCHP = { w: new Map([[mchp, 100]]), neutral: 0, cash: 0, src: "now" }, eyM = eyNow(null, W_MCHP), eyM0 = epsNorm(mchp, ASOF_M, mchp.eN) / mchp.px;
 check("E1 eyNow(MCHP 단독) = 정상화 EPS ÷ 주가", Math.abs(eyM - eyM0) < 1e-12, eyM + " vs " + eyM0);
+// 오늘 정상화 분기가 켜진 종목(평균 > NTM EPS)으로도: 그 종목 단독 eyNow = 정상화 EPS ÷ 주가 (MCHP 는 지금 NTM 이 평균보다 커서 분기가 꺼져 있음)
+const nzS = SFV_LIST.find((s) => s.px && s.eN > 0 && s.path && epsNorm(s, ASOF_M, s.eN) > s.eN * 1.01);
+check("E1 오늘 정상화 분기 종목 단독 eyNow = 정상화 EPS ÷ 주가 (≠ NTM ÷ 주가)", nzS && Math.abs(eyNow(null, { w: new Map([[nzS, 100]]), neutral: 0, cash: 0, src: "now" }) - epsNorm(nzS, ASOF_M, nzS.eN) / nzS.px) < 1e-12, nzS && nzS.d.t);
 const T24 = monthIdx("2024-05"), eyA = eyAt(T24, W_MCHP), eyA0 = epsNorm(mchp, T24) / mchp.byM[T24][3];
+check("E2 MCHP 2024-05 는 정상화 분기(평균 > 12개월 뒤 EPS)", epsNorm(mchp, T24) > epsAt(mchp, T24 + 12), epsNorm(mchp, T24) + " vs " + epsAt(mchp, T24 + 12));
 check("E2 eyAt(2024-05, MCHP 단독) = 정상화 EPS ÷ 그 달 주가 (histRatio 와 같음)", Math.abs(eyA - eyA0) < 1e-12 && Math.abs(eyA - histRatio(T24)(mchp, 1)) < 1e-12, eyA + " vs " + eyA0);
+// M: 오늘 비중 구성에서 적자(정상화 EPS ≤ 0) 종목은 중립 (과거 달 histRatio 와 같게)
+const lossStock = { d: { t: "LOSS", series: [] }, byM: {}, px: 100, eN: -1, path: { [Y0 + 1]: -1 } };
+const W_LOSS = { w: new Map([[nv, 60], [lossStock, 40]]), neutral: 0, cash: 0, src: "now" }, tgL = new Map([[nv, 30], [lossStock, 30]]), kL = new Map([[nv, "own"], [lossStock, "own"]]);
+const mL = mix(ASOF_M, W_LOSS, tgL, kL, okRatio(nowRatio(null)));
+check("M1 오늘 적자 종목 비중은 중립", Math.abs(mL.neutral - 40) < 1e-9 && Math.abs(mL.own - 60) < 1e-9, [mL.own, mL.peer, mL.neutral].join("/"));
+check("M1 합산 적정가는 그대로 (적자 = 중립 1)", Math.abs(rawRatio(tgL, okRatio(nowRatio(null)), W_LOSS) - (0.6 * nowRatio(null)(nv, 30) + 0.4)) < 1e-12);
 // U: 화면 노출 범위
 check("U1 종목 칩은 현재 구성 + 삼성전자만", SFV_LIST.every((s) => s.d.w > 0 || s.d.t === "005930") && !SFV_LIST.some((s) => s.d.t === "QRVO"));
 check("U2 FV 에는 과거 종목 포함", FV.some((s) => s.d.t === "QRVO"));
