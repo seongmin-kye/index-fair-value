@@ -4,7 +4,10 @@ const fs = require("fs");
 const [PAGE, DATA_F, HIST_F, OUT_F, SPAN] = process.argv.slice(2);
 let js = [...fs.readFileSync(PAGE, "utf8").matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n");
 const rep = (re, s) => { if (!re.test(js)) throw new Error("no match " + re); js = js.replace(re, () => s); };
-if (DATA_F !== "-") rep(/^const DATA = .*$/m, `const DATA = ${fs.readFileSync(DATA_F, "utf8")};`);
+if (DATA_F !== "-") {
+  rep(/^const DATA = .*$/m, `const DATA = ${fs.readFileSync(DATA_F, "utf8")};`);
+  rep(/^const SOXX_W_HIST = .*$/m, `const SOXX_W_HIST = {};`);  // QQQ·SPY 는 고정 비중
+}
 if (HIST_F !== "-") {
   const hist = JSON.parse(fs.readFileSync(HIST_F, "utf8"));
   rep(/^const SOXX_HIST = .*$/m, `const SOXX_HIST = ${JSON.stringify(hist)};`);

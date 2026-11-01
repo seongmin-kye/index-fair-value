@@ -97,9 +97,45 @@ def line(s, name, value):
     return pat.sub(lambda m: f"{m.group(1)} {name} = {value}", s, count=1)
 
 
+def nport():
+    """분기말 → N-PORT 행 [티커, 이름, 비중%, 주식수, 평가액, id] (날짜 오름차순)."""
+    d = os.path.join(DATA, "holdings", "SOXX", "nport")
+    return {f[:-5]: load("holdings", "SOXX", "nport", f) for f in sorted(os.listdir(d)) if f.endswith(".json")}
+
+
+def soxx_universe():
+    """DATA 종목: Zacks 현재 구성(비중순, w) 다음에 N-PORT 에만 나온 과거 종목(알파벳순, w=0). 종목 파일 없는 티커는 뺀다."""
+    cur = [(t, n, w) for t, n, w in load("holdings", "SOXX.json") if t and w > 0]
+    seen = {t for t, _, _ in cur}
+    past = {}
+    for rows in nport().values():
+        for r in rows:
+            if r[0] and r[0] not in seen:
+                past.setdefault(r[0], r[1])
+    ents = [soxx_entry(t, n, w) for t, n, w in cur] + [soxx_entry(t, past[t], 0) for t in sorted(past)]
+    return [e for e in ents if e]
+
+
+def w_hist(universe):
+    """분기말 → {티커: 비중%, _neutral: %}. DATA 에 없는 행(티커 없음 · 종목 파일 없음)의 비중은 _neutral 에 합산."""
+    have = {e["t"] for e in universe}
+    out = {}
+    for q, rows in nport().items():
+        o = {}
+        neutral = 0.0
+        for r in rows:
+            if r[0] in have:
+                o[r[0]] = round(o.get(r[0], 0) + r[2], 4)
+            else:
+                neutral += r[2]
+        o["_neutral"] = round(neutral, 4)
+        out[q] = o
+    return out
+
+
 def main():
     s = open(PAGE, encoding="utf-8").read()
-    soxx = [e for e in (soxx_entry(t, n, w) for t, n, w in load("holdings", "SOXX.json") if t and w > 0) if e]
+    soxx = soxx_universe()
     m7 = [soxx_entry(t, t, 0) for t in M7]
     extra = [soxx_entry(t, t, 0) for t in EXTRA]
     hist = {k: load("index", f"{k}.json") for k in ("SOXX", "SOXL", "QQQ", "SPY")}
@@ -107,6 +143,7 @@ def main():
     js = lambda v: json.dumps(v, ensure_ascii=False)
 
     s = line(s, "DATA", js(soxx) + ";")
+    s = line(s, "SOXX_W_HIST", js(w_hist(soxx)) + ";  // {분기말: {티커: 비중%, _neutral: %}} build.py 가 채움")
     s = line(s, "M7_DATA", js([{k: v for k, v in e.items() if k not in ("avg", "n_valid", "n_neg", "n_over", "last", "last_date")} for e in m7]) + ";")
     s = line(s, "EXTRA", js([{k: v for k, v in e.items() if k not in ("avg", "n_valid", "n_neg", "n_over", "last", "last_date")} for e in extra]) + ";")
     s = line(s, "SOXX_HIST", js(hist["SOXX"]) + ";  // [월, 월말 종가] 분할 보정")
