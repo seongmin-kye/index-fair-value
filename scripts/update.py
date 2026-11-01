@@ -3,6 +3,7 @@
   python3 scripts/update.py prices            # 매일: 종목·지수 월봉 종가(이번 달은 최근 종가)와 컨센서스 PER 의 주가
   python3 scripts/update.py full [TICKER ...] # 매주: Zacks 분기 EPS 로 최근 24개월 TTM 다시 계산 + 연도별 컨센서스
   python3 scripts/update.py holdings          # 매주: SOXX·QQQ·SPY 구성 종목·비중 (새 종목은 START 부터 이력을 받음)
+  python3 scripts/update.py nport             # 가끔: SEC N-PORT 로 SOXX 분기 구성 받기 (없는 분기만; 새 종목은 이력도 받음)
   python3 scripts/update.py backfill [TICKER ...]  # 한 번: START 까지 앞쪽 이력을 채움 (기존 행은 그대로)
 
 데이터: data/stocks/{T}.json (종목), data/holdings/{IDX}.json, data/index/{IDX}.json ([[월, 종가], ...]).
@@ -17,7 +18,9 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import forward_per as fp  # noqa: E402
@@ -265,6 +268,156 @@ def holdings(k):
     return out
 
 
+SERIES, TRUST_CIK = "S000004354", "1100663"  # iShares Semiconductor ETF (SOXX)
+
+
+def sec_ua():
+    return {"User-Agent": os.environ.get("SEC_UA") or "index-fair-value (https://github.com/seongmin-kye/index-fair-value)"}
+
+
+def _local(tag):
+    return tag.rsplit("}", 1)[-1]
+
+
+def _child(el, name):
+    """네임스페이스를 무시하고 직계 자식 중 이름이 name 인 첫 요소."""
+    return next((c for c in el if _local(c.tag) == name), None)
+
+
+def _text(el, name, default=""):
+    c = _child(el, name)
+    return (c.text or "").strip() if c is not None else default
+
+
+def nport_filings():
+    """SOXX 시리즈 N-PORT 공시 [(accession, 공시일)], 최신 먼저."""
+    url = (f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={SERIES}"
+           "&type=NPORT-P&count=100&output=atom")
+    root = ET.fromstring(fetch(url, sec_ua()))
+    out = []
+    for e in root.iter():
+        if _local(e.tag) == "entry":
+            acc, day = _text(e, "accession-number"), _text(e, "filing-date")
+            if acc:
+                out.append((acc, day))
+    return sorted(out, key=lambda x: x[1], reverse=True)
+
+
+def nport_parse(xml_text):
+    """(repPdDate, [(name, id, pct, shares, valUSD)]) — 주식(EC)만, 같은 종목도 합치지 않는다."""
+    root = ET.fromstring(xml_text)
+    date = next((e.text.strip() for e in root.iter() if _local(e.tag) == "repPdDate"), "")
+    rows = []
+    for e in root.iter():
+        if _local(e.tag) != "invstOrSec" or _text(e, "assetCat") != "EC":
+            continue
+        cusip = _text(e, "cusip")
+        ident = _child(e, "identifiers")
+        isin = _child(ident, "isin") if ident is not None else None
+        pid = cusip if len(cusip) == 9 and cusip != "000000000" else (isin.get("value", "") if isin is not None else "")
+        if not pid:
+            print(f"식별자 없음 {_text(e, 'name')}")
+            continue
+        rows.append((_text(e, "name"), pid, float(_text(e, "pctVal", "0")),
+                     float(_text(e, "balance", "0")), float(_text(e, "valUSD", "0"))))
+    return date, rows
+
+
+def openfigi(ids):
+    """OpenFIGI 로 {id: 티커}. 한 번에 최대 10개, 429 면 60초 쉬고 한 번 더."""
+    out = {}
+    for i in range(0, len(ids), 10):
+        batch = ids[i:i + 10]
+        body = json.dumps([{"idType": "ID_CUSIP" if len(x) == 9 else "ID_ISIN", "idValue": x, "exchCode": "US"}
+                           for x in batch]).encode()
+        for k in range(2):
+            req = urllib.request.Request("https://api.openfigi.com/v3/mapping", body,
+                                         {"Content-Type": "application/json", **ZUA})
+            try:
+                res = json.load(urllib.request.urlopen(req, timeout=30))
+                break
+            except urllib.error.HTTPError as e:
+                if e.code != 429 or k:
+                    raise
+                time.sleep(60)
+        for x, r in zip(batch, res):
+            if r.get("data"):
+                out[x] = r["data"][0]["ticker"]
+        time.sleep(3)
+    return out
+
+
+def _name_key(name):
+    return " ".join(re.sub(r"[^a-z0-9 ]", " ", name.lower()).split()[:2])
+
+
+def resolve_ids(rows, ids, zacks_names):
+    """nport_parse 행 → 저장 형식 [ticker|None, name, pct(4자리), shares, valUSD, id]. 같은 ticker 는 합산.
+    ids 에 없는 id 는 OpenFIGI 로 채워 넣는다. 같은 회사명의 Zacks 티커가 있으면 그것을 쓴다."""
+    names = {_name_key(n): t for t, n in zacks_names.items()}
+    new = sorted({r[1] for r in rows if r[1] not in ids})
+    got = openfigi(new) if new else {}
+    by_id = {r[1]: r[0] for r in rows}
+    for i, t in got.items():
+        ids[i] = names.get(_name_key(by_id[i]), t) if t not in zacks_names else t
+    out, seen = [], {}
+    for name, i, pct, sh, val in rows:
+        t = ids.get(i)
+        if t is None:
+            print(f"미매핑 {name} {i}")
+        if t is not None and t in seen:
+            r = seen[t]
+            r[2], r[3], r[4] = r[2] + pct, r[3] + sh, r[4] + val
+            continue
+        r = [t, name, pct, sh, val, i]
+        out.append(r)
+        if t is not None:
+            seen[t] = r
+    for r in out:
+        r[2] = round(r[2], 4)
+    return out
+
+
+def update_nport():
+    """없는 분기의 N-PORT 를 받아 data/holdings/SOXX/nport/{분기말}.json 에 저장. 오류 문자열 목록."""
+    errs, found = [], {}
+    d = os.path.join(DATA, "holdings", "SOXX", "nport")
+    os.makedirs(d, exist_ok=True)
+    try:
+        filings = nport_filings()
+    except Exception as e:
+        return [f"nport 목록: {e}"]
+    for acc, day in sorted(filings, key=lambda x: x[1]):  # 늦게 낸 공시(정정)가 이긴다
+        try:
+            url = f"https://www.sec.gov/Archives/edgar/data/{TRUST_CIK}/{acc.replace('-', '')}/primary_doc.xml"
+            date, rows = nport_parse(fetch(url, sec_ua()))
+            found[date] = rows
+        except Exception as e:
+            errs.append(f"nport {acc}: {e}")
+        time.sleep(0.2)
+    ids_path = os.path.join(DATA, "holdings", "ids.json")
+    ids = load(ids_path, {})
+    zacks = {t: n for t, n, _ in load(os.path.join(DATA, "holdings", "SOXX.json"), []) if t}
+    new = {}
+    for date, rows in sorted(found.items()):
+        path = os.path.join(d, f"{date}.json")
+        if os.path.exists(path):
+            continue
+        try:
+            out = resolve_ids(rows, ids, zacks)
+        except Exception as e:
+            errs.append(f"nport {date}: {e}")
+            continue
+        save(path, out)
+        save(ids_path, ids)
+        for t, name, *_ in out:
+            if t and not os.path.exists(stock_path(t)):
+                new[t] = name
+    print("새 종목", sorted(new))
+    errs += run(lambda t: update_full_one(t, new[t]), sorted(new), 6)
+    return errs
+
+
 def all_tickers():
     return sorted(f[:-5] for f in os.listdir(os.path.join(DATA, "stocks")) if f.endswith(".json"))
 
@@ -292,6 +445,8 @@ def main():
         for k in INDEXES:
             update_index(k)
         errs = run(backfill_one, args or all_tickers(), 6)
+    elif mode == "nport":
+        errs = update_nport()
     elif mode == "holdings":
         errs, new = [], {}
         for k in ("SOXX", "QQQ", "SPY"):
