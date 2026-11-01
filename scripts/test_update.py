@@ -1,5 +1,8 @@
+import datetime as dt
+import json
 import os
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -107,6 +110,36 @@ class NportTest(unittest.TestCase):
              ("2025-12-31", "NPORT-P", "2026-02-01", "o1"),
              ("2025-12-31", "NPORT-P", "2026-03-01", "o2")]
         self.assertEqual(update.pick_filings(p), {"2026-06-30": "orig", "2026-03-31": "a2", "2025-12-31": "o2"})
+
+    def test_ntm_eps_weights_fiscal_years(self):
+        fwd = [{"fy": [2026, 12], "eps": [10, 10]}, {"fy": [2027, 12], "eps": [20, 20]}]
+        self.assertAlmostEqual(update.ntm_eps(fwd, dt.date(2026, 7, 1)), 10 * (184/365) + 20 * (181/365), places=1)
+
+    def test_ntm_eps_none_when_gap(self):
+        self.assertIsNone(update.ntm_eps([{"fy": [2026, 12], "eps": [10, 10]}], dt.date(2026, 7, 1)))
+
+    def test_ntm_eps_none_when_eps_missing(self):
+        fwd = [{"fy": [2026, 12], "eps": None}, {"fy": [2027, 12], "eps": [20, 20]}]
+        self.assertIsNone(update.ntm_eps(fwd, dt.date(2026, 7, 1)))
+
+    def test_snapshot_once_per_month(self):
+        old = update.DATA
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "stocks"))
+            fwd = [{"fy": [2026, 12], "eps": [10, 12]}, {"fy": [2027, 12], "eps": [20, 20]}, {"fy": [2028, 12], "eps": None}]
+            with open(os.path.join(d, "stocks", "AAA.json"), "w") as f:
+                json.dump({"fwd": fwd}, f)
+            update.DATA = d
+            try:
+                p = update.consensus_snapshot(["AAA", "NOPE"], dt.date(2026, 7, 1))
+                self.assertEqual(os.path.basename(p), "2026-07.json")
+                self.assertIsNone(update.consensus_snapshot(["AAA"], dt.date(2026, 7, 20)))
+                snap = json.load(open(p))
+            finally:
+                update.DATA = old
+        self.assertEqual(list(snap), ["AAA"])
+        self.assertEqual(snap["AAA"]["fy"], [[2026, 12, 11.0], [2027, 12, 20.0]])
+        self.assertIsInstance(snap["AAA"]["ntm"], float)
 
 
 if __name__ == "__main__":

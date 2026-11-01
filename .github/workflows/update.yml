@@ -34,8 +34,11 @@ jobs:
         run: python3 scripts/update.py prices
       - name: 구성 종목 · 실적 · 컨센서스
         if: github.event.schedule == '0 3 * * 6' || inputs.mode == 'full'
+        env:
+          SEC_UA: ${{ secrets.SEC_UA }}
         run: |
           python3 scripts/update.py holdings
+          python3 scripts/update.py nport || true
           python3 scripts/update.py full
           python3 scripts/update.py prices
       - name: 앞쪽 이력 채우기 (한 번)

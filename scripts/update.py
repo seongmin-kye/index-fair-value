@@ -436,6 +436,52 @@ def update_nport():
     return errs
 
 
+def _years_later(d, n):
+    try:
+        return d.replace(year=d.year + n)
+    except ValueError:  # 2/29
+        return d.replace(year=d.year + n, day=28)
+
+
+def ntm_eps(fwd, asof):
+    """페이지 ntmEps 와 같은 규칙: asof 부터 1년 구간을 회계연도와 겹치는 일수로 가중한 EPS. 모자라면 None."""
+    end = _years_later(asof, 1)
+    span = (end - asof).days
+    tot = cov = 0.0
+    for c in fwd:
+        if not c or not c.get("fy"):
+            continue
+        y, m = c["fy"]
+        fe = dt.date(y + (m == 12), m % 12 + 1, 1)  # 결산월 말일의 다음 날 (배타적 끝)
+        ov = (min(fe, end) - max(_years_later(fe, -1), asof)).days
+        if ov <= 0:
+            continue
+        if not c.get("eps"):
+            return None
+        w = ov / span
+        tot += w * (c["eps"][0] + c["eps"][1]) / 2
+        cov += w
+    return tot if cov > 0.98 else None
+
+
+def consensus_snapshot(tickers, today):
+    """월 1회 컨센서스 기록 data/consensus/YYYY-MM.json. 이미 있으면 None, 아니면 쓴 경로."""
+    path = os.path.join(DATA, "consensus", today.strftime("%Y-%m") + ".json")
+    if os.path.exists(path):
+        return None
+    snap = {}
+    for t in tickers:
+        fwd = (load(stock_path(t)) or {}).get("fwd")
+        if not fwd:
+            continue
+        snap[t] = {"ntm": ntm_eps(fwd, today),
+                   "fy": [[c["fy"][0], c["fy"][1], (c["eps"][0] + c["eps"][1]) / 2]
+                          for c in fwd if c and c.get("fy") and c.get("eps")]}
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    save(path, snap)
+    return path
+
+
 def all_tickers():
     return sorted(f[:-5] for f in os.listdir(os.path.join(DATA, "stocks")) if f.endswith(".json"))
 
@@ -459,6 +505,7 @@ def main():
         errs = run(update_prices_one, args or all_tickers(), 8)
     elif mode == "full":
         errs = run(update_full_one, args or all_tickers(), 6)
+        consensus_snapshot(args or all_tickers(), dt.date.today())
     elif mode == "backfill":
         for k in INDEXES:
             update_index(k)
