@@ -45,13 +45,13 @@
 2.91
 ],
 [
-"SPCX",
-"Space Exploration Technologies Corp",
+"GOOG",
+"Alphabet Inc",
 2.81
 ],
 [
-"GOOG",
-"Alphabet Inc",
+"SPCX",
+"Space Exploration Technologies Corp",
 2.81
 ],
 [
@@ -165,13 +165,13 @@
 0.74
 ],
 [
-"ASML",
-"ASML Holding NV",
+"TMUS",
+"T-Mobile US Inc",
 0.72
 ],
 [
-"TMUS",
-"T-Mobile US Inc",
+"ASML",
+"ASML Holding NV",
 0.72
 ],
 [
@@ -220,13 +220,13 @@
 0.42
 ],
 [
-"CDNS",
-"Cadence Design Systems Inc",
+"LITE",
+"Lumentum Holdings Inc",
 0.4
 ],
 [
-"LITE",
-"Lumentum Holdings Inc",
+"CDNS",
+"Cadence Design Systems Inc",
 0.4
 ],
 [
@@ -235,23 +235,23 @@
 0.39
 ],
 [
-"MAR",
-"Marriott International Inc/MD",
-0.39
-],
-[
 "SNPS",
 "Synopsys Inc",
 0.39
 ],
 [
-"CEG",
-"Constellation Energy Corp",
-0.38
+"MAR",
+"Marriott International Inc/MD",
+0.39
 ],
 [
 "DDOG",
 "Datadog Inc",
+0.38
+],
+[
+"CEG",
+"Constellation Energy Corp",
 0.38
 ],
 [
@@ -275,6 +275,16 @@
 0.34
 ],
 [
+"INTU",
+"Intuit Inc",
+0.32
+],
+[
+"DASH",
+"DoorDash Inc",
+0.32
+],
+[
 "CTAS",
 "Cintas Corp",
 0.32
@@ -290,23 +300,13 @@ null,
 0.32
 ],
 [
-"DASH",
-"DoorDash Inc",
-0.32
-],
-[
-"INTU",
-"Intuit Inc",
-0.32
+"MDLZ",
+"Mondelez International Inc",
+0.31
 ],
 [
 "REGN",
 "Regeneron Pharmaceuticals Inc",
-0.31
-],
-[
-"MDLZ",
-"Mondelez International Inc",
 0.31
 ],
 [
@@ -325,11 +325,6 @@ null,
 0.29
 ],
 [
-"ORLY",
-"O'Reilly Automotive Inc",
-0.28
-],
-[
 "HON",
 "Honeywell International Inc",
 0.28
@@ -337,6 +332,11 @@ null,
 [
 "ABNB",
 "Airbnb Inc",
+0.28
+],
+[
+"ORLY",
+"O'Reilly Automotive Inc",
 0.28
 ],
 [
@@ -355,11 +355,6 @@ null,
 0.25
 ],
 [
-"USD",
-"CASH & EQUIVALENTS",
-0.24
-],
-[
 "PCAR",
 "PACCAR Inc",
 0.24
@@ -370,8 +365,8 @@ null,
 0.24
 ],
 [
-"MSTR",
-"Strategy Inc",
+"USD",
+"CASH & EQUIVALENTS",
 0.24
 ],
 [
@@ -380,18 +375,23 @@ null,
 0.24
 ],
 [
+"MSTR",
+"Strategy Inc",
+0.24
+],
+[
 "BKR",
 "Baker Hughes Co",
 0.23
 ],
 [
-"FANG",
-"Diamondback Energy Inc",
+"PDD",
+"PDD Holdings Inc",
 0.21
 ],
 [
-"PDD",
-"PDD Holdings Inc",
+"FANG",
+"Diamondback Energy Inc",
 0.21
 ],
 [
@@ -400,18 +400,18 @@ null,
 0.2
 ],
 [
-"PYPL",
-"PayPal Holdings Inc",
-0.19
-],
-[
 "XEL",
 "Xcel Energy Inc",
 0.19
 ],
 [
-"RKLB",
-"Rocket Lab Corp",
+"PYPL",
+"PayPal Holdings Inc",
+0.19
+],
+[
+"ADSK",
+"Autodesk Inc",
 0.18
 ],
 [
@@ -420,28 +420,18 @@ null,
 0.18
 ],
 [
-"ADSK",
-"Autodesk Inc",
-0.18
-],
-[
 "MCHP",
 "Microchip Technology Inc",
 0.18
 ],
 [
-"KDP",
-"Keurig Dr Pepper Inc",
-0.17
+"RKLB",
+"Rocket Lab Corp",
+0.18
 ],
 [
 "CRWV",
 "CoreWeave Inc",
-0.17
-],
-[
-"EXC",
-"Exelon Corp",
 0.17
 ],
 [
@@ -450,9 +440,14 @@ null,
 0.17
 ],
 [
-"TTWO",
-"Take-Two Interactive Software Inc",
-0.16
+"KDP",
+"Keurig Dr Pepper Inc",
+0.17
+],
+[
+"EXC",
+"Exelon Corp",
+0.17
 ],
 [
 "FER",
@@ -460,13 +455,13 @@ null,
 0.16
 ],
 [
-"PAYX",
-"Paychex Inc",
-0.15
+"TTWO",
+"Take-Two Interactive Software Inc",
+0.16
 ],
 [
-"WDAY",
-"Workday Inc",
+"TRI",
+"Thomson Reuters Corp",
 0.15
 ],
 [
@@ -475,8 +470,13 @@ null,
 0.15
 ],
 [
-"TRI",
-"Thomson Reuters Corp",
+"WDAY",
+"Workday Inc",
+0.15
+],
+[
+"PAYX",
+"Paychex Inc",
 0.15
 ],
 [
