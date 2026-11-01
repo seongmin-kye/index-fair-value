@@ -815,7 +815,7 @@ const SOXL_HIST = [["2012-01-01", 0.61], ["2012-02-01", 0.67], ["2012-03-01", 0.
 const SOXL_PRICE = SOXL_HIST[SOXL_HIST.length - 1][1];
 const fvView = { soxl: false, basis: "sum", range: "5", idx: "SOXX", span: "5" };  // basis: sum = 종목별 기준 합산(기본 — 기준을 고른 창 밖에서도 덜 틀림), index = 지수 기준(격자, 비교용) · range: 차트 과거 구간(년) · span: 백테스트 기간(년)
 try {
-  fvView.soxl = localStorage.getItem("soxx-per-soxl") === "1"; if (localStorage.getItem("soxx-per-basis") === "index") fvView.basis = "index";
+  fvView.soxl = localStorage.getItem("soxx-per-soxl") === "1"; if (localStorage.getItem("soxx-per-basis2") === "index") fvView.basis = "index";
   if (localStorage.getItem("soxx-per-range") === "10") fvView.range = "10";
   const ix = localStorage.getItem("soxx-per-idx"); if (ix === "QQQ" || ix === "SPY") fvView.idx = ix;
   if (localStorage.getItem("soxx-per-span") === "10") fvView.span = "10";
@@ -1279,7 +1279,7 @@ function buildFair() {
   });
   for (const b of ["index", "sum"]) $(`fv-b-${b}`).addEventListener("click", () => {
     fvView.basis = b;
-    try { localStorage.setItem("soxx-per-basis", b); } catch (e) {}
+    try { localStorage.setItem("soxx-per-basis2", b); } catch (e) {}
     fvRender();
     fvContrib();
   });
