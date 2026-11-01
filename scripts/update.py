@@ -444,7 +444,8 @@ def _years_later(d, n):
 
 
 def ntm_eps(fwd, asof):
-    """페이지 ntmEps 와 같은 규칙: asof 부터 1년 구간을 회계연도와 겹치는 일수로 가중한 EPS. 모자라면 None."""
+    """페이지 ntmEps 와 비슷한 규칙: asof 부터 1년 구간을 회계연도와 겹치는 일수로 가중한 EPS. 모자라면 None.
+    회계연도 끝은 결산월 말일이 아니라 다음 달 1일(배타적)로 취급해 페이지보다 하루 길다."""
     end = _years_later(asof, 1)
     span = (end - asof).days
     tot = cov = 0.0
@@ -462,6 +463,11 @@ def ntm_eps(fwd, asof):
         tot += w * (c["eps"][0] + c["eps"][1]) / 2
         cov += w
     return tot if cov > 0.98 else None
+
+
+def should_snapshot(args):
+    """전체 종목 실행일 때만 스냅샷 (일부 종목만 돌리면 그 달 기록이 불완전하게 굳는다)."""
+    return not args
 
 
 def consensus_snapshot(tickers, today):
@@ -505,7 +511,8 @@ def main():
         errs = run(update_prices_one, args or all_tickers(), 8)
     elif mode == "full":
         errs = run(update_full_one, args or all_tickers(), 6)
-        consensus_snapshot(args or all_tickers(), dt.date.today())
+        if should_snapshot(args):
+            consensus_snapshot(all_tickers(), dt.date.today())
     elif mode == "backfill":
         for k in INDEXES:
             update_index(k)

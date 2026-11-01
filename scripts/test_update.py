@@ -122,6 +122,10 @@ class NportTest(unittest.TestCase):
         fwd = [{"fy": [2026, 12], "eps": None}, {"fy": [2027, 12], "eps": [20, 20]}]
         self.assertIsNone(update.ntm_eps(fwd, dt.date(2026, 7, 1)))
 
+    def test_should_snapshot_only_for_full_run(self):
+        self.assertTrue(update.should_snapshot([]))
+        self.assertFalse(update.should_snapshot(["AAA", "BBB"]))
+
     def test_snapshot_once_per_month(self):
         old = update.DATA
         with tempfile.TemporaryDirectory() as d:
