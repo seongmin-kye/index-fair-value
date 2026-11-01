@@ -47,6 +47,15 @@ const tslaD = find("TSLA").d;
 check("B5 TSLA 2026 EPS 범위 통일 (0.67 vs 1.74 → 하나)", tslaD.fwd[0].eps[0] === tslaD.fwd[0].eps[1], JSON.stringify(tslaD.fwd[0].eps));
 check("B5 TSLA EPS 경로가 2028 에 꺾이지 않음", find("TSLA").path[2028] > find("TSLA").path[2027], JSON.stringify(find("TSLA").path));
 
+// W: 시점별 비중
+const W1 = weightsAt(monthIdx("2019-06")), W2 = weightsAt(ASOF_M), W3 = weightsAt(monthIdx("2021-11")), W4 = weightsAt(monthIdx("2021-09"));
+check("W1 2019-09 이전은 비중 없음", W1 === null);
+check("W2 오늘은 Zacks 현재 비중 (합 99~100)", W2 && W2.src === "now" && Math.abs([...W2.w.values()].reduce((a, b) => a + b, 0) + W2.cash - 100) < 1e-6 && W2.w.get(find("ALAB")) > 2);
+const sum3 = [...W3.w.values()].reduce((a, b) => a + b, 0) + W3.neutral;
+check("W3 2021-11 비중: 굴린 뒤에도 합 = 분기 합, NaN 없음, XLNX 는 중립에", W3.src === "nport" && isFinite(sum3) && Math.abs(sum3 - ([...W4.w.values()].reduce((a, b) => a + b, 0) + W4.neutral)) < 1e-6 && W3.neutral > 3 && !W3.w.has(find("XLNX") || {}), sum3.toFixed(2) + " neutral " + W3.neutral.toFixed(2));
+check("W4 2021-09 ALAB 비중 0, NVDA 7~8", !W4.w.get(find("ALAB")) && W4.w.get(find("NVDA")) > 7 && W4.w.get(find("NVDA")) < 8.5);
+check("W4 2021-10 NVDA 비중이 10월 주가만큼 움직임", Math.abs(weightsAt(monthIdx("2021-10")).w.get(find("NVDA")) / W4.w.get(find("NVDA")) - find("NVDA").byM[monthIdx("2021-10")][3] / find("NVDA").byM[monthIdx("2021-09")][3]) < 0.1);
+
 console.log(fails.length ? "\\n" + fails.length + " failed" : "\\nall passed");
 process.exit(fails.length ? 1 : 0);
 `;
