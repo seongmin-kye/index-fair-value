@@ -1,4 +1,4 @@
-// 페이지 계산 코드를 그대로 돌려 지수 하나(QQQ·SPY · SOXX 10년)의 rolling 적정가(종목별 기준 합산) · 백테스트 · 연말 적정가를 뽑는다
+// 페이지 계산 코드를 그대로 돌려 지수 하나(QQQ·SPY · SOXX 10년)의 rolling 적정가(종목별 기준 합산 · 지수 PER 비교선) · 백테스트 · 연말 적정가를 뽑는다
 // node scripts/run_idx.js PAGE DATA_JSON INDEX_HIST_JSON OUT_JSON [SPAN]   (DATA_JSON·INDEX_HIST_JSON 을 - 로 주면 페이지의 SOXX 그대로, SPAN = 백테스트 기간(년))
 const fs = require("fs");
 const [PAGE, DATA_F, HIST_F, OUT_F, SPAN] = process.argv.slice(2);
@@ -27,8 +27,8 @@ const res = {
   cover: r1(wOf((s) => s.path && s.eN && s.px), 1),
   covHist: r1(wOf((s) => Object.keys(s.fpe).length >= 24), 1),
   bt: BT,
-  hist: FV_HIST.map((h) => [h.x, h.px, null, r1(h.fv2), r1(h.own), r1(h.peer), r1(h.neutral), h.n]),
-  pts: FV_PTS.map((p) => [p.y, null, r1(p.fv2)]),
+  hist: FV_HIST.map((h) => [h.x, h.px, r1(h.fvI), r1(h.fv2), r1(h.own), r1(h.peer), r1(h.neutral), h.n]),
+  pts: FV_PTS.map((p) => [p.y, r1(p.fvI), r1(p.fv2)]),
 };
 require("fs").writeFileSync(${JSON.stringify(OUT_F)}, JSON.stringify(res));
 console.log(${JSON.stringify(OUT_F)}, res.stocks + " stocks", BT.n + " months", "RMSE " + (BT.sumErr * 100).toFixed(1) + "%", "today " + res.pts[0][2]);

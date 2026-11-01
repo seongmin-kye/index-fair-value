@@ -58,13 +58,19 @@ const W10 = weightsAt(monthIdx("2021-10")), pxM = (t, k) => find(t).byM[monthIdx
 const relW = (W10.w.get(find("NVDA")) / W4.w.get(find("NVDA"))) / (W10.w.get(find("AMD")) / W4.w.get(find("AMD")));
 const relP = (pxM("NVDA", "2021-10") / pxM("NVDA", "2021-09")) / (pxM("AMD", "2021-10") / pxM("AMD", "2021-09"));
 check("W4 2021-10 NVDA·AMD 비중 비가 10월 주가 비만큼 움직임", Math.abs(relW - relP) < 1e-9, relW.toFixed(6) + " vs " + relP.toFixed(6));
-const h1909 = FV_HIST.find((h) => h.label === "2019-08"), h2109 = FV_HIST.find((h) => h.label === "2021-09"), hNow = FV_HIST.at(-1);
+const h1909 = FV_HIST.find((h) => h.label === "2019-08"), h2109 = FV_HIST.find((h) => h.label === "2021-09");
 check("W5 2019-08 적정가 없음(noW)", h1909.fv2 == null && h1909.noW);
 check("W6 2021-09 적정가 있음, own+peer+neutral = 100", h2109.fv2 > 0 && Math.abs(h2109.own + h2109.peer + h2109.neutral - 100) < 1e-6, [h2109.own, h2109.peer, h2109.neutral].map((v) => v.toFixed(1)).join("/"));
 check("W6 2021-09 XLNX 중립 ≥ 3%p 포함", h2109.neutral >= 3);
 check("W7 오늘 적정가는 현재 비중 (ALAB 기여 있음)", TG_SUM_NOW.has(find("ALAB")) && FV_PTS[0].fv2 > 0);
 check("W8 BT 는 최근 5년(ASOF_M-71 ~ ASOF_M-12), 61개월 이하, sumErr 0.05~0.5", BT.T0 === ASOF_M - 11 - 12 * GRID_SPAN && BT.n <= 61 && BT.sumErr > 0.05 && BT.sumErr < 0.5, BT.n + " " + BT.sumErr.toFixed(3));
 check("W9 격자 전역 제거", typeof GRID === "undefined" && typeof targetsAt === "undefined");
+check("I1 IDX_PER 2021-09 는 15~60", IDX_PER[monthIdx("2021-09")] > 15 && IDX_PER[monthIdx("2021-09")] < 60, IDX_PER[monthIdx("2021-09")]);
+check("I1 비교선 시작 2022-08 이후, 그 전 null", FV_HIST.find((h) => h.fvI).label >= "2022-08" && FV_HIST.find((h) => h.label === "2022-06").fvI == null);
+check("I2 비교선에 Infinity/NaN 없음", FV_HIST.every((h) => h.fvI == null || isFinite(h.fvI)) && FV_PTS.every((p) => p.fvI == null || isFinite(p.fvI)));
+check("I2 계산 가능 비중 절반 미만이면 null", eyAt(monthIdx("2021-09"), { w: new Map([[find("NVDA"), 10]]), neutral: 0, cash: 90, src: "nport" }) === null);
+check("I3 BT 비교 달 수 30~45, idxErr 유한", BT.cmpN >= 30 && BT.cmpN <= 45 && isFinite(BT.idxErr) && isFinite(BT.sumErrCmp), BT.cmpN + " " + BT.idxErr.toFixed(3));
+check("I4 기본 basis = sum", fvView.basis === "sum");
 
 console.log(fails.length ? "\\n" + fails.length + " failed" : "\\nall passed");
 process.exit(fails.length ? 1 : 0);
