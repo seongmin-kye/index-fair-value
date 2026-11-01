@@ -73,6 +73,8 @@ check("I3 BT 비교 달 수 30~45, idxErr 유한", BT.cmpN >= 30 && BT.cmpN <= 4
 check("I4 기본 basis = sum", fvView.basis === "sum");
 const nv = find("NVDA"), eyLoss = eyNow(null, { w: new Map([[nv, 60], [{ px: 100, eN: -1, path: {} }, 40]]), neutral: 0, cash: 0, src: "now" });
 check("I5 eyNow: 적자(EPS ≤ 0) 종목은 분자·분모 모두에서 빠짐", Math.abs(eyLoss - nv.eN / nv.px) < 1e-12, eyLoss + " vs " + nv.eN / nv.px);
+check("F1 FWD NVDA 2021-09 = TTM × (1+g), 0.5배 상한", (() => { const s = find("NVDA"), T = monthIdx("2021-09"), v = FWD(s, T); return v > 0 && v <= epsAt(s, T) * 1.5 && v >= epsAt(s, T) * 0.5; })());
+check("F2 fwdErr > sumErr (실제값보다 못함) 이고 유한", isFinite(BT.fwdErr) && BT.fwdErr > BT.sumErr, (BT.fwdErr * 100).toFixed(1));
 
 console.log(fails.length ? "\\n" + fails.length + " failed" : "\\nall passed");
 process.exit(fails.length ? 1 : 0);
