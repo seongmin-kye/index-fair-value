@@ -13,25 +13,46 @@ const check = (name, ok, info) => { console.log((ok ? "ok   " : "FAIL ") + name 
 const find = (t) => SFV_LIST.concat(FV_M7).find((x) => x.d.t === t);
 const maxJump = (hist) => { let m = 0; for (let i = 1; i < hist.length; i++) if (hist[i].pe && hist[i - 1].pe) m = Math.max(m, Math.abs(Math.log(hist[i].pe / hist[i - 1].pe))); return Math.exp(m); };
 
-// B1: 이익 바닥(12개월 뒤 EPS 가 직전 3년 TTM 고점의 절반 미만)인 달은 forward PER 관측에서 빠진다
+// B1: 이익 바닥 달은 정상화 EPS(max(12개월 뒤 EPS, 앞뒤 3년 TTM 평균))로 재서 배수가 부풀지 않고, 적정가도 꺼지지 않는다
 const mchp = find("MCHP");
-check("B1 MCHP 2024-05 (12개월 뒤 EPS 1.30 vs 고점 6.46) fpe 제외", mchp.fpe[monthIdx("2024-05")] == null);
-check("B1 MCHP 2022-06 (정상 구간) fpe 유지", mchp.fpe[monthIdx("2022-06")] != null);
+check("B1 MCHP 2024-05 (12개월 뒤 EPS 1.30 vs 3년 평균 ~4.5) forward PER 30배 미만", mchp.fpe[monthIdx("2024-05")] != null && mchp.fpe[monthIdx("2024-05")] < 30, mchp.fpe[monthIdx("2024-05")] && mchp.fpe[monthIdx("2024-05")].toFixed(1));
+check("B1 MCHP 2022-06 (정상 구간) forward PER 그대로", Math.abs(mchp.fpe[monthIdx("2022-06")] - mchp.byM[monthIdx("2022-06")][3] / epsAt(mchp, monthIdx("2022-06") + 12)) < 1e-9);
 const mc = sfvCompute(mchp);
 check("B1 MCHP 목표 PER 지금 < 40", mc.now.pe < 40, mc.now.pe.toFixed(1) + " " + mc.now.rule);
 check("B1 MCHP 목표 PER 월간 변화 2배 미만", maxJump(mc.hist) < 2, maxJump(mc.hist).toFixed(2));
-check("B1 MCHP 이익 바닥 달(2024-05) 적정가 없음", mc.hist.find((h) => h.label === "2024-05").fv == null);
-check("B1 이익 바닥 달이 종목 격자 오차에 안 들어감", !(mchp.own.best && mchp.own.best.err > 0.5), mchp.own.best && mchp.own.best.err.toFixed(2));
+const m2405 = mc.hist.find((h) => h.label === "2024-05");
+check("B1 MCHP 이익 바닥 달(2024-05) 적정가가 주가의 절반 이상", m2405.fv > 0.5 * m2405.px, m2405.fv && m2405.fv.toFixed(0) + " vs " + m2405.px);
+check("B1 MCHP 종목 격자 오차 < 0.5", mchp.own.best && mchp.own.best.err < 0.5, mchp.own.best && mchp.own.best.err.toFixed(2));
 if (find("TTWO")) check("B1 TTWO 목표 PER 지금 < 50", sfvCompute(find("TTWO")).now.pe < 50);
+// B1b: 이력이 긴 종목은 이익 바닥을 지나도 자기 기준이 끊기지 않는다 (INTC 2022~25 적자·바닥)
+const intc = sfvCompute(find("INTC"));
+check("B1b INTC 자기 기준으로 적정가 계산", intc.now.pe > 0 && /^자기/.test(intc.now.rule) && intc.pts[0].fv > 0, (intc.now.pe || 0).toFixed(1) + " " + intc.now.rule + " fv " + (intc.pts[0].fv || 0).toFixed(0));
+const longHist = SFV_LIST.filter((s) => !MEMORY.has(s.d.t) && s.d.series.length >= 120);
+const gaps = longHist.filter((s) => Object.keys(s.fpe).filter((i) => +i >= ASOF_M - 47 && +i <= ASOF_M - 12).length < 27).map((s) => s.d.t);
+check("B1b 10년 이력 종목은 직전 3년 창에 관측 27개월 이상", gaps.length === 0, gaps.join(","));
 
 // B2: 이력이 짧은 종목은 나머지 종목 중앙값 대신 자기 관측 중앙값 (9개월 이상)
 const arm = sfvCompute(find("ARM"));
 check("B2 ARM 자기 forward PER 중앙값 사용 (50~100배)", arm.now.pe > 50 && arm.now.pe < 100, arm.now.pe.toFixed(1) + " " + arm.now.rule);
-check("B2 ARM 규칙 문구에 '이력' 표시", /이력/.test(arm.now.rule), arm.now.rule);
+check("B2 ARM 규칙 문구에 이력 24개월 미만 표시", /이력 24개월 미만/.test(arm.now.rule), arm.now.rule);
 const alab = sfvCompute(find("ALAB"));
 const alabObs = Object.entries(find("ALAB").fpe).filter(([i]) => +i >= ASOF_M - 47 && +i <= ASOF_M - 12).map(([, v]) => v);
-check("B2 ALAB 자기 관측 중앙값 (직전 3년 관측 9개월 이상)", /이력 짧음/.test(alab.now.rule) && alabObs.length >= 9 && Math.abs(alab.now.pe - median(alabObs)) < 1e-9, alab.now.pe.toFixed(1) + " " + alab.now.rule);
-check("B2 CBRS (관측 0) 은 나머지 종목 중앙값", /나머지/.test(sfvCompute(find("CBRS")).now.rule));
+check("B2 ALAB 격자 없음 → 자기 직전 3년 중앙값 (관측 9개월 이상)", /격자 없음/.test(alab.now.rule) && alabObs.length >= 9 && Math.abs(alab.now.pe - median(alabObs)) < 1e-9, alab.now.pe.toFixed(1) + " " + alab.now.rule);
+// B7: 창 규칙이 하나 — 관측 9개월부터 계산, 27개월 미만이면 백분위를 중앙값 쪽으로 당김 (창 줄이기 없음)
+const amd = find("AMD"), rAmd = peAt(amd, ASOF_M, 5, 0.9);
+check("B7 관측 27개월 이상이면 백분위(띠 평균) 그대로", rAmd && rAmd.n >= 27 && Math.abs(rAmd.pe - bandQuantile(Object.entries(amd.fpe).filter(([i]) => +i >= ASOF_M - 71 && +i <= ASOF_M - 12).map(([, v]) => v), 0.9)) < 1e-9);
+const fake = { fpe: Object.fromEntries(Array.from({ length: 9 }, (_, k) => [ASOF_M - 12 - k, 10 + k])) };
+check("B7 관측 9개월이면 어떤 백분위든 중앙값(띠)", Math.abs(peAt(fake, ASOF_M, 3, 0.9).pe - peAt(fake, ASOF_M, 3, 0.2).pe) < 1e-9 && Math.abs(peAt(fake, ASOF_M, 3, 0.9).pe - 14) < 1e-9, peAt(fake, ASOF_M, 3, 0.9).pe);
+check("B7 관측 8개월이면 null", peAt({ fpe: Object.fromEntries(Array.from({ length: 8 }, (_, k) => [ASOF_M - 12 - k, 10 + k])) }, ASOF_M, 3, 0.5) == null);
+check("B2 CBRS (관측 0) 은 계산 안 함", sfvCompute(find("CBRS")).now.pe == null && /계산 안 함/.test(sfvCompute(find("CBRS")).now.rule));
+// B6: 종목별 목표 PER 이 달 사이에 1.5배 넘게 튀지 않는다 (나머지 종목 중앙값 ↔ 자기 기준 전환이 없어야 함). 메모리는 규칙 전환이 있어 제외
+for (const s of SFV_LIST.concat(FV_M7)) {
+  if (MEMORY.has(s.d.t)) continue;
+  const c = FV_M7.includes(s) ? m7StockCompute(s) : sfvCompute(s), h = c.hist.filter((x) => x.pe);
+  let bad = null;
+  for (let i = 1; i < h.length; i++) { if (h[i].x - h[i - 1].x !== 1) continue; const r = h[i].pe / h[i - 1].pe; if (r > 1.5 || r < 1 / 1.5) bad = h[i - 1].label + " " + h[i - 1].pe.toFixed(1) + "→" + h[i].pe.toFixed(1); }  // 계산 안 한 달을 사이에 둔 비교는 제외 (바닥 전후는 다른 국면)
+  if (bad || s.d.t === "ARM" || s.d.t === "CRDO") check("B6 " + s.d.t + " 목표 PER 월간 변화 1.5배 미만", !bad, bad);
+}
 check("B2 지수 합산(TG_SUM_NOW)도 ARM 에 자기 중앙값", TG_SUM_NOW.get(find("ARM")) > 50, TG_SUM_NOW.get(find("ARM")).toFixed(1));
 
 // B3: 격자(창 줄이기)와 실제 목표 PER 이 같은 규칙 → TSLA 2025-10 절벽(95→28) 없음
@@ -71,7 +92,7 @@ check("I2 비교선에 Infinity/NaN 없음", FV_HIST.every((h) => h.fvI == null 
 check("I2 계산 가능 비중 절반 미만이면 null", eyAt(monthIdx("2021-09"), { w: new Map([[find("NVDA"), 10]]), neutral: 0, cash: 90, src: "nport" }) === null);
 check("I3 BT 비교 달 수 30~45, idxErr 유한", BT.cmpN >= 30 && BT.cmpN <= 45 && isFinite(BT.idxErr) && isFinite(BT.sumErrCmp), BT.cmpN + " " + BT.idxErr.toFixed(3));
 check("I4 기본 basis = sum", fvView.basis === "sum");
-const nv = find("NVDA"), eyLoss = eyNow(null, { w: new Map([[nv, 60], [{ px: 100, eN: -1, path: {} }, 40]]), neutral: 0, cash: 0, src: "now" });
+const nv = find("NVDA"), eyLoss = eyNow(null, { w: new Map([[nv, 60], [{ d: { series: [] }, byM: {}, px: 100, eN: -1, path: {} }, 40]]), neutral: 0, cash: 0, src: "now" });
 check("I5 eyNow: 적자(EPS ≤ 0) 종목은 분자·분모 모두에서 빠짐", Math.abs(eyLoss - nv.eN / nv.px) < 1e-12, eyLoss + " vs " + nv.eN / nv.px);
 check("F1 FWD NVDA 2021-09 = TTM × (1+g), 0.5배 상한", (() => { const s = find("NVDA"), T = monthIdx("2021-09"), v = FWD(s, T); return v > 0 && v <= epsAt(s, T) * 1.5 && v >= epsAt(s, T) * 0.5; })());
 check("F2 fwdErr > sumErr (실제값보다 못함) 이고 유한", isFinite(BT.fwdErr) && BT.fwdErr > BT.sumErr, (BT.fwdErr * 100).toFixed(1));
