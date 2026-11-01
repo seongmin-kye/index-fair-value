@@ -22,13 +22,14 @@ const out = `
 const r1 = (v, k = 2) => (v == null || !isFinite(v) ? null : +v.toFixed(k));
 const ws = [...W_NOW.w].filter(([, w]) => w > 0), wOf = (f) => ws.filter(([s]) => f(s)).reduce((a, [, w]) => a + w, 0);
 const res = {
-  price: SOXX_PRICE, wsum: r1(wOf(() => true), 1), asof: ymd(ASOF), x5: FV_X5,
+  price: SOXX_PRICE, wsum: r1(wOf(() => true), 1), asof: ymd(ASOF),
   stocks: ws.length, cash: r1(W_NOW.cash, 1),
   cover: r1(wOf((s) => s.path && s.eN && s.px), 1),
   covHist: r1(wOf((s) => Object.keys(s.fpe).length >= 24), 1),
   bt: BT,
   hist: FV_HIST.map((h) => [h.x, h.px, r1(h.fvI), r1(h.fv2), r1(h.own), r1(h.peer), r1(h.neutral), h.n]),
   pts: FV_PTS.map((p) => [p.y, r1(p.fvI), r1(p.fv2)]),
+  mix: [r1(FV_PTS[0].own), r1(FV_PTS[0].peer), r1(FV_PTS[0].neutral), FV_PTS[0].n],  // 오늘 자기 · 빌린 · 중립 비중, 구성 종목 수
 };
 require("fs").writeFileSync(${JSON.stringify(OUT_F)}, JSON.stringify(res));
 console.log(${JSON.stringify(OUT_F)}, res.stocks + " stocks", BT.n + " months", "RMSE " + (BT.sumErr * 100).toFixed(1) + "%", "today " + res.pts[0][2]);

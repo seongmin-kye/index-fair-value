@@ -55,7 +55,7 @@ for (const s of SFV_LIST.concat(FV_M7)) {
 }
 check("B2 지수 합산(TG_SUM_NOW)도 ARM 에 자기 중앙값", TG_SUM_NOW.get(find("ARM")) > 50, TG_SUM_NOW.get(find("ARM")).toFixed(1));
 
-// B3: 격자(창 줄이기)와 실제 목표 PER 이 같은 규칙 → TSLA 2025-10 절벽(95→28) 없음
+// B3: 격자와 실제 목표 PER 이 같은 규칙 → TSLA 2025-10 절벽(95→28) 없음
 const tsla = m7StockCompute(find("TSLA"));
 check("B3 TSLA 목표 PER 월간 변화 2배 미만", maxJump(tsla.hist) < 2, maxJump(tsla.hist).toFixed(2));
 check("B3 TSLA 지금 목표 PER 가 M7 중앙값이 아님", !/나머지/.test(tsla.rule), tsla.pe.toFixed(1) + " " + tsla.rule);
@@ -93,7 +93,19 @@ check("I2 계산 가능 비중 절반 미만이면 null", eyAt(monthIdx("2021-09
 check("I3 BT 비교 달 수 30~45, idxErr 유한", BT.cmpN >= 30 && BT.cmpN <= 45 && isFinite(BT.idxErr) && isFinite(BT.sumErrCmp), BT.cmpN + " " + BT.idxErr.toFixed(3));
 check("I4 기본 basis = sum", fvView.basis === "sum");
 const nv = find("NVDA"), eyLoss = eyNow(null, { w: new Map([[nv, 60], [{ d: { series: [] }, byM: {}, px: 100, eN: -1, path: {} }, 40]]), neutral: 0, cash: 0, src: "now" });
-check("I5 eyNow: 적자(EPS ≤ 0) 종목은 분자·분모 모두에서 빠짐", Math.abs(eyLoss - nv.eN / nv.px) < 1e-12, eyLoss + " vs " + nv.eN / nv.px);
+const nvEy = epsNorm(nv, ASOF_M, nv.eN) / nv.px;
+check("I5 eyNow: 적자(EPS ≤ 0) 종목은 분자·분모 모두에서 빠짐", Math.abs(eyLoss - nvEy) < 1e-12, eyLoss + " vs " + nvEy);
+// E: 비교선 이익수익률도 정상화 EPS (histRatio · nowRatio 와 같은 EPS)
+const W_MCHP = { w: new Map([[mchp, 100]]), neutral: 0, cash: 0, src: "now" }, eyM = eyNow(null, W_MCHP), eyM0 = epsNorm(mchp, ASOF_M, mchp.eN) / mchp.px;
+check("E1 eyNow(MCHP 단독) = 정상화 EPS ÷ 주가", Math.abs(eyM - eyM0) < 1e-12, eyM + " vs " + eyM0);
+const T24 = monthIdx("2024-05"), eyA = eyAt(T24, W_MCHP), eyA0 = epsNorm(mchp, T24) / mchp.byM[T24][3];
+check("E2 eyAt(2024-05, MCHP 단독) = 정상화 EPS ÷ 그 달 주가 (histRatio 와 같음)", Math.abs(eyA - eyA0) < 1e-12 && Math.abs(eyA - histRatio(T24)(mchp, 1)) < 1e-12, eyA + " vs " + eyA0);
+// U: 화면 노출 범위
+check("U1 종목 칩은 현재 구성 + 삼성전자만", SFV_LIST.every((s) => s.d.w > 0 || s.d.t === "005930") && !SFV_LIST.some((s) => s.d.t === "QRVO"));
+check("U2 FV 에는 과거 종목 포함", FV.some((s) => s.d.t === "QRVO"));
+check("U3 오늘 자기/빌린/중립 합 100", Math.abs(FV_PTS[0].own + FV_PTS[0].peer + FV_PTS[0].neutral - 100) < 1e-6, [FV_PTS[0].own, FV_PTS[0].peer, FV_PTS[0].neutral].map((v) => v && v.toFixed(1)).join("/"));
+check("U4 지수 5년 보기 시작(FV_X5 · x5) 제거", typeof FV_X5 === "undefined" && Object.values(IDX_ALT).every((r) => !("x5" in r)));
+check("U5 QQQ·SPY 오늘도 자기/빌린/중립 합 100", ["QQQ", "SPY"].filter((k) => IDX_SET[k]).every((k) => { const p = IDX_SET[k].pts[0]; return Math.abs(p.own + p.peer + p.neutral - 100) < 0.1 && p.n > 0; }));
 check("F1 FWD NVDA 2021-09 = TTM × (1+g), 0.5배 상한", (() => { const s = find("NVDA"), T = monthIdx("2021-09"), v = FWD(s, T); return v > 0 && v <= epsAt(s, T) * 1.5 && v >= epsAt(s, T) * 0.5; })());
 check("F2 fwdErr > sumErr (실제값보다 못함) 이고 유한", isFinite(BT.fwdErr) && BT.fwdErr > BT.sumErr, (BT.fwdErr * 100).toFixed(1));
 
