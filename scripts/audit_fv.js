@@ -12,7 +12,7 @@ const window = { addEventListener(){}, matchMedia: () => ({ matches: false, addE
 const localStorage = { getItem: () => null, setItem(){} };`;
 const audit = `
 const out = { noRule: [], extreme: [], jump: [], badGrid: [], noEps: [], thinWin: [], peerIdx: [] };
-const all = [...new Set(SFV_LIST.concat(FV_M7))];
+const all = [...new Set(FV.concat(FV_X, FV_M7))];  // 과거 구성 종목(지금 비중 0)도 지수 합산에 들어가므로 같이 점검
 for (const s of all) {
   const t = s.d.t, m7 = FV_M7.includes(s), c = m7 ? m7StockCompute(s) : sfvCompute(s), now = m7 ? { pe: c.pe, rule: c.rule } : c.now;
   const months = s.d.series.length, mem = MEMORY.has(t);

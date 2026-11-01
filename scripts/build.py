@@ -143,7 +143,13 @@ def main():
     js = lambda v: json.dumps(v, ensure_ascii=False)
 
     s = line(s, "DATA", js(soxx) + ";")
-    s = line(s, "SOXX_W_HIST", js(w_hist(soxx)) + ";  // {분기말: {티커: 비중%, _neutral: %}} build.py 가 채움")
+    wh = w_hist(soxx)
+    if wh:  # N-PORT 는 분기말 약 60일 뒤 공개 — 150일 넘게 비면 수집(update.py)이 막힌 것. 빌드는 계속
+        q = max(wh)
+        gap = (dt.date.fromisoformat(asof[:10]) - dt.date.fromisoformat(q)).days
+        if gap > 150:
+            print(f"경고: 최신 N-PORT 분기 {q} 가 기준일 {asof} 보다 {gap}일 오래됨 — SEC_UA secret 이 설정되지 않았을 수 있음")
+    s = line(s, "SOXX_W_HIST", js(wh) + ";  // {분기말: {티커: 비중%, _neutral: %}} build.py 가 채움")
     s = line(s, "M7_DATA", js([{k: v for k, v in e.items() if k not in ("avg", "n_valid", "n_neg", "n_over", "last", "last_date")} for e in m7]) + ";")
     s = line(s, "EXTRA", js([{k: v for k, v in e.items() if k not in ("avg", "n_valid", "n_neg", "n_over", "last", "last_date")} for e in extra]) + ";")
     s = line(s, "SOXX_HIST", js(hist["SOXX"]) + ";  // [월, 월말 종가] 분할 보정")

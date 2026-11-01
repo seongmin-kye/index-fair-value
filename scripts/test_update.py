@@ -1,5 +1,6 @@
 """update.py 단위 테스트: python3 scripts/test_update.py"""
 import datetime as dt
+import io
 import json
 import os
 import sys
@@ -82,6 +83,17 @@ class NportTest(unittest.TestCase):
             update.resolve_ids(rows, ids, {})
         self.assertEqual(len(ids), 10)
         self.assertEqual(ids["000000001"], "T000000001")
+
+    def test_openfigi_skips_entries_without_ticker(self):
+        resp = [{"data": [{"ticker": "NVDA"}]}, {"data": [{"name": "no ticker"}]}, {"warning": "No identifier found."}]
+        urlopen, sleep = update.urllib.request.urlopen, update.time.sleep
+        update.urllib.request.urlopen = lambda req, timeout=None: io.BytesIO(json.dumps(resp).encode())
+        update.time.sleep = lambda s: None
+        try:
+            out = self._figi(["67066G104", "512807108", "USN070592100"])
+        finally:
+            update.urllib.request.urlopen, update.time.sleep = urlopen, sleep
+        self.assertEqual(out, {"67066G104": "NVDA"})
 
     def test_parse_empty_numbers_are_zero(self):
         xml = FIXTURE.replace("<pctVal>8.0</pctVal>", "<pctVal></pctVal>")

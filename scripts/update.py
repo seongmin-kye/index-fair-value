@@ -367,8 +367,13 @@ def openfigi(ids):
     time.sleep(3)
     if not isinstance(res, list) or len(res) != len(ids):
         return {}
-    return {x: r["data"][0]["ticker"] for x, r in zip(ids, res)
-            if isinstance(r, dict) and r.get("data")}
+    out = {}
+    for x, r in zip(ids, res):  # 티커가 빠진 항목은 건너뜀 (그 분기 전체를 멈추지 않게)
+        d = r.get("data") if isinstance(r, dict) else None
+        t = d[0].get("ticker") if d and isinstance(d[0], dict) else None
+        if t:
+            out[x] = t
+    return out
 
 
 def _name_key(name):

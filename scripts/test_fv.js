@@ -119,6 +119,21 @@ check("U5 QQQ·SPY 오늘도 자기/빌린/중립 합 100", ["QQQ", "SPY"].filte
 check("F1 FWD NVDA 2021-09 = TTM × (1+g), 0.5배 상한", (() => { const s = find("NVDA"), T = monthIdx("2021-09"), v = FWD(s, T); return v > 0 && v <= epsAt(s, T) * 1.5 && v >= epsAt(s, T) * 0.5; })());
 check("F2 fwdErr > sumErr (실제값보다 못함) 이고 유한", isFinite(BT.fwdErr) && BT.fwdErr > BT.sumErr, (BT.fwdErr * 100).toFixed(1));
 
+// G: 과거 구성 종목도 자기 격자 (지수 합산에 그 달 비중으로 들어가므로)
+const noGrid = FV.filter((s) => s.d.series.length >= 24 && !(s.own && typeof s.own === "object")).map((s) => s.d.t);
+check("G1 이력 24개월 이상인 FV 종목은 모두 자기 격자(s.own)", !noGrid.length, noGrid.join(" ") || FV.length);
+const pastGrid = FV.filter((s) => s.d.w === 0 && s.own && s.own.best).map((s) => s.d.t);
+check("G2 과거 구성 종목 중 격자 best 가 있는 종목 1개 이상", pastGrid.length > 0, pastGrid.join(" "));
+// Z: 백테스트 할 달이 없으면 BT 대신 짧은 문구 (페이지가 죽지 않음)
+{
+  const saved = { ...BT }, el = { textContent: "" }, gid = document.getElementById;
+  document.getElementById = (id) => (id === "bt-note" ? el : null);
+  Object.assign(BT, { T0: null, T1: null, n: 0, sumErr: null, rho: null, cmpT0: null, cmpN: 0, sumErrCmp: null, idxErr: null, fwdErr: null });
+  let ok = true; try { fvBacktest(); } catch (e) { ok = false; }
+  check("Z1 BT 가 비면 fvBacktest 는 '백테스트 할 달이 없음'", ok && /백테스트 할 달이 없음/.test(el.textContent), el.textContent);
+  Object.assign(BT, saved); document.getElementById = gid;
+}
+
 console.log(fails.length ? "\\n" + fails.length + " failed" : "\\nall passed");
 process.exit(fails.length ? 1 : 0);
 `;
