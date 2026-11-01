@@ -18,6 +18,7 @@ import re
 import sys
 import time
 import urllib.request
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import forward_per as fp  # noqa: E402
@@ -61,12 +62,19 @@ def stock_path(t):
 
 # ---------- 주가 ----------
 
+def bar_date(ts, tz):
+    """Yahoo 봉 시각(epoch) → 거래소 현지 날짜. 월봉은 그 달 1일 00:00 현지 시각이라 서머타임을 그 날짜 기준으로 풀어야 한다.
+    (meta.gmtoffset 은 '지금' 시차라, 서머타임이 끝난 뒤 4~10월 봉에 쓰면 전달 말일로 밀려 한 달씩 어긋난다 — 2026-11-01 사고)"""
+    return dt.datetime.fromtimestamp(ts, ZoneInfo(tz)).date()
+
+
 def monthly(ticker, rng):
     """([(YYYY-MM, 종가)], 마지막 거래일, 현재가, 통화). 이번 달 값은 최근 종가."""
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1mo&range={rng}"
     r = json.loads(fetch(url, {"User-Agent": "Mozilla/5.0"}))["chart"]["result"][0]
     meta = r["meta"]
-    local = lambda ts: dt.datetime.fromtimestamp(ts + meta.get("gmtoffset", 0), dt.timezone.utc).date()  # 거래소 현지 날짜
+    tz = meta.get("exchangeTimezoneName") or "UTC"
+    local = lambda ts: bar_date(ts, tz)  # 거래소 현지 날짜
     last = local(meta["regularMarketTime"])
     rows = {}
     for t, c in zip(r.get("timestamp", []), r["indicators"]["quote"][0]["close"]):
