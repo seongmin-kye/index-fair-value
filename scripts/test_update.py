@@ -63,6 +63,26 @@ class NportTest(unittest.TestCase):
         self.assertIsNone(out[0][0])
         self.assertEqual(ids, {})
 
+    def test_resolve_keeps_earlier_batches_when_later_batch_fails(self):
+        calls = []
+
+        def fake(batch):
+            calls.append(batch)
+            if len(calls) == 2:
+                raise RuntimeError("429")
+            return {i: "T" + i for i in batch}
+        update.openfigi = fake
+        rows = [(f"Co{n}", f"{n:09d}", 1.0, 1, 1) for n in range(1, 16)]
+        ids = {}
+        with self.assertRaises(RuntimeError):
+            update.resolve_ids(rows, ids, {})
+        self.assertEqual(len(ids), 10)
+        self.assertEqual(ids["000000001"], "T000000001")
+
+    def test_parse_empty_numbers_are_zero(self):
+        xml = FIXTURE.replace("<pctVal>8.0</pctVal>", "<pctVal></pctVal>")
+        self.assertEqual(update.nport_parse(xml)[1][0][2], 0.0)
+
     def test_sec_ua_default(self):
         os.environ.pop("SEC_UA", None)
         self.assertIn("github.com/seongmin-kye/index-fair-value", update.sec_ua()["User-Agent"])

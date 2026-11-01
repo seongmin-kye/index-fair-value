@@ -318,33 +318,30 @@ def nport_parse(xml_text):
         if not pid:
             print(f"식별자 없음 {_text(e, 'name')}")
             continue
-        rows.append((_text(e, "name"), pid, float(_text(e, "pctVal", "0")),
-                     float(_text(e, "balance", "0")), float(_text(e, "valUSD", "0"))))
+        rows.append((_text(e, "name"), pid, float(_text(e, "pctVal") or 0),
+                     float(_text(e, "balance") or 0), float(_text(e, "valUSD") or 0)))
     return date, rows
 
 
 def openfigi(ids):
-    """OpenFIGI 로 {id: 티커}. 한 번에 최대 10개, 429 면 60초 쉬고 한 번 더."""
-    out = {}
-    for i in range(0, len(ids), 10):
-        batch = ids[i:i + 10]
-        body = json.dumps([{"idType": "ID_CUSIP" if len(x) == 9 else "ID_ISIN", "idValue": x, "exchCode": "US"}
-                           for x in batch]).encode()
-        for k in range(2):
-            req = urllib.request.Request("https://api.openfigi.com/v3/mapping", body,
-                                         {"Content-Type": "application/json", **ZUA})
-            try:
-                res = json.load(urllib.request.urlopen(req, timeout=30))
-                break
-            except urllib.error.HTTPError as e:
-                if e.code != 429 or k:
-                    raise
-                time.sleep(60)
-        for x, r in zip(batch, res):
-            if r.get("data"):
-                out[x] = r["data"][0]["ticker"]
-        time.sleep(3)
-    return out
+    """OpenFIGI 한 번 호출(최대 10개)로 {id: 티커}. 429 면 60초 쉬고 한 번 더. 응답 모양이 이상하면 {}."""
+    body = json.dumps([{"idType": "ID_CUSIP" if len(x) == 9 else "ID_ISIN", "idValue": x, "exchCode": "US"}
+                       for x in ids]).encode()
+    for k in range(2):
+        req = urllib.request.Request("https://api.openfigi.com/v3/mapping", body,
+                                     {"Content-Type": "application/json", **ZUA})
+        try:
+            res = json.load(urllib.request.urlopen(req, timeout=30))
+            break
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or k:
+                raise
+            time.sleep(60)
+    time.sleep(3)
+    if not isinstance(res, list) or len(res) != len(ids):
+        return {}
+    return {x: r["data"][0]["ticker"] for x, r in zip(ids, res)
+            if isinstance(r, dict) and r.get("data")}
 
 
 def _name_key(name):
@@ -356,10 +353,10 @@ def resolve_ids(rows, ids, zacks_names):
     ids 에 없는 id 는 OpenFIGI 로 채워 넣는다. 같은 회사명의 Zacks 티커가 있으면 그것을 쓴다."""
     names = {_name_key(n): t for t, n in zacks_names.items()}
     new = sorted({r[1] for r in rows if r[1] not in ids})
-    got = openfigi(new) if new else {}
     by_id = {r[1]: r[0] for r in rows}
-    for i, t in got.items():
-        ids[i] = names.get(_name_key(by_id[i]), t) if t not in zacks_names else t
+    for k in range(0, len(new), 10):  # 묶음마다 ids 에 바로 넣어, 중간에 실패해도 앞 묶음 결과는 남는다
+        for i, t in openfigi(new[k:k + 10]).items():
+            ids[i] = names.get(_name_key(by_id[i]), t) if t not in zacks_names else t
     out, seen = [], {}
     for name, i, pct, sh, val in rows:
         t = ids.get(i)
@@ -406,6 +403,7 @@ def update_nport():
         try:
             out = resolve_ids(rows, ids, zacks)
         except Exception as e:
+            save(ids_path, ids)  # 일부라도 매핑된 것은 보존
             errs.append(f"nport {date}: {e}")
             continue
         save(path, out)
