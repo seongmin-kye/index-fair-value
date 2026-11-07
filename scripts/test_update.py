@@ -172,6 +172,33 @@ class NportTest(unittest.TestCase):
         ts = int(dt.datetime(2026, 9, 30, 15, 0, tzinfo=dt.timezone.utc).timestamp())
         assert update.bar_date(ts, "Asia/Seoul") == dt.date(2026, 10, 1)
 
+    # ---- 액면분할: Yahoo 는 분할 뒤 전체 이력을 조정하지만 갱신은 최근 몇 달만 덮어쓴다 (2026-11-05 SOXX 3:1 사고)
+    def test_split_adjust_index_rescales_older_rows(self):
+        rows = [["2026-07-01", 500.0], ["2026-08-01", 511.04], ["2026-09-01", 568.64], ["2026-10-30", 471.51]]
+        got = update.split_adjust(rows, [("2026-09", 189.55), ("2026-10", 157.17), ("2026-11", 136.53)], 1)
+        self.assertEqual([r[1] for r in rows], [166.67, 170.35, 189.55, 157.17])
+        self.assertEqual([ym for ym, _ in got], ["2026-09", "2026-10", "<2026-09"])
+        self.assertAlmostEqual(got[0][1], 3.0, places=2)
+
+    def test_split_adjust_stock_divides_eps_keeps_per(self):
+        rows = [["2026-07-01", 25.0, 20.0, 500.0], ["2026-09-01", 28.43, 20.0, 568.64]]
+        update.split_adjust(rows, [("2026-09", 189.55), ("2026-10", 157.17)], 3, 2)
+        self.assertEqual([r[:2] + [r[3]] for r in rows], [["2026-07-01", 25.0, 166.67], ["2026-09-01", 28.43, 189.55]])
+        for r in rows:
+            self.assertAlmostEqual(r[2], 20 / 3, places=3)  # 배수는 568.64/189.55 ≈ 2.99995 라 정확히 3 은 아님
+
+    def test_split_adjust_fixes_half_adjusted_series(self):
+        # 분할 뒤 이미 한 번 갱신돼 최근 달만 조정된 상태: 겹치는 가장 오래된 달(08)의 배수로 그 앞을 고치고 09·10 은 그대로
+        rows = [["2026-07-01", 500.0], ["2026-08-01", 511.04], ["2026-09-01", 189.55], ["2026-10-01", 157.17]]
+        update.split_adjust(rows, [("2026-08", 170.35), ("2026-09", 189.55), ("2026-10", 157.17)], 1)
+        self.assertEqual([r[1] for r in rows], [166.67, 170.35, 189.55, 157.17])
+
+    def test_split_adjust_ignores_small_revisions_and_none(self):
+        rows = [["2026-08-01", 100.0], ["2026-09-01", None, None, None][:2], ["2026-10-01", 102.0]]
+        rows[1] = ["2026-09-01", None]
+        self.assertEqual(update.split_adjust(rows, [("2026-09", 101.0), ("2026-10", 100.5)], 1), [])
+        self.assertEqual([r[1] for r in rows], [100.0, None, 102.0])
+
 
 if __name__ == "__main__":
     unittest.main()

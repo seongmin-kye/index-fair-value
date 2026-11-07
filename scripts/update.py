@@ -5,9 +5,11 @@
   python3 scripts/update.py holdings          # 매주: SOXX·QQQ·SPY 구성 종목·비중 (새 종목은 START 부터 이력을 받음)
   python3 scripts/update.py nport             # 가끔: SEC N-PORT 로 SOXX 분기 구성 받기 (없는 분기만; 새 종목은 이력도 받음)
   python3 scripts/update.py backfill [TICKER ...]  # 한 번: START 까지 앞쪽 이력을 채움 (기존 행은 그대로)
+  python3 scripts/update.py splits [TICKER ...]  # 복구: 전체 이력을 받아 액면분할이 안 맞는 행을 보정 (평소엔 prices·full 이 알아서 함)
 
 데이터: data/stocks/{T}.json (종목), data/holdings/{IDX}.json, data/index/{IDX}.json ([[월, 종가], ...]).
 24개월보다 오래된 행은 건드리지 않는다 (META 의 SEC 이력처럼 손으로 보정한 구간을 지키기 위해).
+예외는 액면분할: Yahoo 종가가 저장값과 배수로 어긋나면 그 앞 행의 주가·EPS 를 같은 배수로 나눈다 (split_adjust).
 hist_src = "frozen" 인 종목(SK하이닉스·삼성전자, 연간 EPS 를 손으로 넣음)은 주가와 컨센서스만 갱신한다.
 """
 import concurrent.futures as cf
@@ -87,11 +89,50 @@ def monthly(ticker, rng):
     return sorted(rows.items()), last, meta["regularMarketPrice"], meta.get("currency")
 
 
+SPLIT_TOL = 0.2  # 저장 종가 ÷ Yahoo 종가가 1 에서 이만큼 벗어나면 액면분할로 본다 (가장 흔한 3:2 도 잡고, 소수점 반올림은 거른다)
+
+
+def split_adjust(rows, months, ipx, ieps=None):
+    """액면분할 보정. Yahoo 는 분할 뒤 전체 이력을 새 주식 수로 조정하지만 갱신은 최근 몇 달만 덮어쓰므로,
+    저장된 종가가 Yahoo 종가와 배수로 어긋난 행은 그 배수로 주가·EPS 를 나눈다 (PER 은 분할에 불변).
+    가져온 구간보다 오래된 행은 겹치는 가장 오래된 달의 배수를 그대로 쓴다. 반환: [(달 또는 '<달', 배수)] (로그용)."""
+    fetched = {ym: c for ym, c in months if c}
+    if not rows or not fetched:
+        return []
+    ratio = {}
+    for r in rows:
+        ym, px = r[0][:7], r[ipx]
+        c = fetched.get(ym)
+        if c and px and abs(px / c - 1) > SPLIT_TOL:
+            ratio[ym] = px / c
+
+    def scale(r, k):
+        r[ipx] = round(r[ipx] / k, 2)
+        if ieps is not None and r[ieps]:
+            r[ieps] = round(r[ieps] / k, 4)
+
+    done = []
+    for r in rows:
+        k = ratio.get(r[0][:7])
+        if k:
+            scale(r, k)
+            done.append((r[0][:7], k))
+    oldest = min((r[0][:7] for r in rows if r[0][:7] in fetched), default=None)
+    k = ratio.get(oldest)
+    if k:
+        for r in rows:
+            if r[0][:7] < oldest and r[ipx]:
+                scale(r, k)
+        done.append(("<" + oldest, k))
+    return done
+
+
 def apply_prices(st, months, last):
     """series 의 최근 달 종가를 바꾸고 새 달을 붙인다. TTM 은 그 달 행이 없으면 직전 행 값을 이어 쓴다."""
     s = st["series"]
     if not s:
         return
+    split_adjust(s, months, 3, 2)
     by = {r[0][:7]: r for r in s}
     for ym, close in months:
         if ym < s[0][0][:7]:
@@ -129,11 +170,13 @@ def update_prices_one(t):
         return f"{t}: {e}"
 
 
-def update_index(k):
+def update_index(k, rng=None):
     path = os.path.join(DATA, "index", f"{k}.json")
     h = load(path, [])
     full = not h or h[0][0][:7] > START.strftime("%Y-%m")
-    months, last, _, _ = monthly(INDEXES[k], "15y" if full else "3mo")
+    months, last, _, _ = monthly(INDEXES[k], rng or ("15y" if full else "3mo"))
+    for ym, f in split_adjust(h, months, 1):
+        print(f"{k}: 액면분할 보정 {ym} ×1/{f:.4g}")
     by = {r[0][:7]: r for r in h}
     for ym, c in months:
         if ym < START.strftime("%Y-%m"):
@@ -183,6 +226,7 @@ def month_end(day):
 def rebuild_series(st, ttm, months, last):
     """최근 REFRESH_MONTHS 개월(새 종목이면 전체)의 TTM 을 Zacks 실적으로 다시 계산."""
     s = st["series"]
+    split_adjust(s, months, 3, 2)  # 남겨 두는 옛 행도 분할 뒤 주식 수로 맞춘다
     cut = (dt.date.today().replace(day=1) - dt.timedelta(days=31 * REFRESH_MONTHS)).strftime("%Y-%m") if s else "0000"
     keep = [r for r in s if r[0][:7] < cut]
     rows = []
@@ -245,6 +289,7 @@ def backfill_one(t):
         ttm = ttm_points(zacks_quarters(t))
     except Exception as e:
         return f"{t}: {e}"
+    split_adjust(st["series"], months, 3, 2)
     rows = []
     for ym, close in months:
         if ym >= first or ym < START.strftime("%Y-%m"):
@@ -257,6 +302,21 @@ def backfill_one(t):
         rows.append([f"{ym}-01", round(close / v, 2) if v > 0 else None, v, close])
     if rows:
         st["series"] = rows + st["series"]
+        save(stock_path(t), st)
+
+
+def fix_splits_one(t):
+    """전체 이력(15y)을 받아 저장된 종가가 Yahoo 와 배수로 어긋난 행을 분할 보정한다 (행 추가·삭제 없음). 보정한 것만 출력."""
+    st = load(stock_path(t))
+    if not st or not st.get("series"):
+        return None
+    try:
+        months, _, _, _ = monthly(st["price_ticker"], "15y")
+    except Exception as e:
+        return f"{t}: {e}"
+    done = split_adjust(st["series"], months, 3, 2)
+    if done:
+        print(f"{t}: 액면분할 보정 " + ", ".join(f"{ym} ×1/{f:.4g}" for ym, f in done))
         save(stock_path(t), st)
     time.sleep(1.0)
     return None
@@ -490,10 +550,12 @@ def consensus_snapshot(tickers, today):
         return None
     snap = {}
     for t in tickers:
-        fwd = (load(stock_path(t)) or {}).get("fwd")
+        st = load(stock_path(t)) or {}
+        fwd = st.get("fwd")
         if not fwd:
             continue
-        snap[t] = {"ntm": ntm_eps(fwd, today),
+        snap[t] = {"px": st.get("fwd_price"),  # 그때 주가: 뒤에 액면분할이 있어도 PER(px÷eps)로 비교할 수 있게
+                   "ntm": ntm_eps(fwd, today),
                    "fy": [[c["fy"][0], c["fy"][1], (c["eps"][0] + c["eps"][1]) / 2]
                           for c in fwd if c and c.get("fy") and c.get("eps")]}
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -530,6 +592,10 @@ def main():
         for k in INDEXES:
             update_index(k)
         errs = run(backfill_one, args or all_tickers(), 6)
+    elif mode == "splits":
+        for k in INDEXES:
+            update_index(k, "15y")
+        errs = run(fix_splits_one, args or all_tickers(), 6)
     elif mode == "nport":
         errs = update_nport()
     elif mode == "holdings":

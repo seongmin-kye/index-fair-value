@@ -13,6 +13,6 @@
 - 데이터: Yahoo Finance(주가), Zacks(분기 EPS · ETF 구성), SEC EDGAR N-PORT(SOXX 과거 구성), Nasdaq/Yahoo/WiseReport(컨센서스). 투자 조언 아님
 
 ```
-python3 scripts/update.py prices | full [TICKER ...] | holdings | nport
+python3 scripts/update.py prices | full [TICKER ...] | holdings | nport | splits [TICKER ...]   # splits: 액면분할이 안 맞는 이력 복구
 python3 scripts/build.py
 ```
