@@ -77,7 +77,7 @@ def test_parse_zacks_calendar(self):
 **Interfaces:**
 - Produces: `basis_ok(src_q, ref_q, tol=0.011) -> bool | None` — 겹치는 분기 <2 이면 None.
 - `build_rows(sources, quarters, years, growth_override)` 의 `sources` 는 `{"Zacks": {...}, "Yahoo": {...}, "Nasdaq": {...}}` 중 있는 것. 행 필드: `eps=(w, w)`, `n=[...]`, `src={출처: 원값}`, Nasdaq 재기준화 행은 `rebase=k`.
-- `compute()` 반환에 `"basis": {"Yahoo": True|False|None}` 추가. Yahoo 가 False 면 `sources` 에서 빼고 진행.
+- `compute()` 반환에 `"src_basis": {"Yahoo": True|False|None}` 추가 (`"basis"` 는 성장률 기준 연도로 이미 쓰여 이름을 바꿈). Yahoo 가 False 면 `sources` 에서 빼고 진행. update.py 는 이것을 `st["basis"]` 에 저장.
 
 - [ ] **Step 1: 실패하는 테스트**
 

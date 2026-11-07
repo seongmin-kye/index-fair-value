@@ -209,6 +209,7 @@ def fetch_wisereport_eps(opener, ticker):
 
 BASIS_TOL = 0.011  # 분기 EPS 잣대 검사 허용 오차 (센트 반올림)
 GROWTH_SRC = "Nasdaq"  # 수준이 아니라 FY+2 이후의 성장 경로만 빌리는 출처
+REBASE_BAND = (0.8, 1.25)  # 재기준화 배수 k 가 이 밖이면 Nasdaq 은 다른 잣대(GAAP 등)로 보고 그 연도들을 버린다 (전 종목 k 중앙값 1.00)
 
 
 def basis_ok(src_q, ref_q, tol=BASIS_TOL):
@@ -240,6 +241,9 @@ def merge_sources(sources):
                 k = eps / g[0]
         else:
             out[cy] = {"fy": fy, "src": {GROWTH_SRC: src[GROWTH_SRC][0]}, "n": [src[GROWTH_SRC][1]] if src[GROWTH_SRC][1] is not None else []}
+    if k is not None and not (REBASE_BAND[0] <= k <= REBASE_BAND[1]):
+        # 잣대가 아예 다르면(GAAP vs 조정, CRWD k≈7) 성장 경로도 못 옮긴다 — Nasdaq 만 있는 연도를 버리고 성장률 추정에 맡긴다
+        return {cy: r for cy, r in out.items() if "eps" in r}
     for cy, r in out.items():
         if "eps" not in r:
             r["eps"] = r["src"][GROWTH_SRC] * (k or 1)
@@ -261,14 +265,14 @@ def build_rows(sources, quarters, years, growth_override):
         return by_cy[cy]["eps"]
 
     # 애널리스트 3명 이하 연도는 성장률 기준에서 뺀다.
-    # 컨센서스가 2개 연도 이하(해외 종목 등)면 --growth 없이는 추정하지 않는다.
+    # 믿을 만한 연도가 2개 미만이면 --growth 없이는 추정하지 않는다 (FY0·FY1 두 해면 추정한다 — Nasdaq 을 버린 종목도 경로가 있어야 하므로).
     growth, basis = growth_override, None
     def thin(cy):
         ns = by_cy[cy]["n"]
         return bool(ns) and max(ns) <= 3  # 수가 공개되지 않은 출처(FnGuide)는 거르지 않는다
 
     reliable = [cy for cy in known if not thin(cy)]
-    if growth is None and len(known) >= 3 and len(reliable) >= 2 and mid(reliable[-2]) > 0:
+    if growth is None and len(reliable) >= 2 and mid(reliable[-2]) > 0:
         growth = mid(reliable[-1]) / mid(reliable[-2]) - 1
         basis = (reliable[-2], reliable[-1])
 

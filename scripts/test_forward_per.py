@@ -75,11 +75,22 @@ class MergeTest(unittest.TestCase):
         self.assertEqual(rows[0]["eps"], (8.0, 8.0))
         self.assertEqual(rows[1]["eps"], (14.0, 14.0))
 
+    def test_rebase_out_of_band_drops_nasdaq_years(self):
+        # Nasdaq 이 GAAP 같은 다른 잣대(k=7.3)면 성장 경로도 못 빌린다 — FY+2 이후를 비워 FY0→FY1 성장률 추정에 맡긴다
+        rows = self._rows({"Yahoo": {(2027, 1): (1.3, 40), (2028, 1): (1.61, 40)},
+                           "Nasdaq": {(2027, 1): (0.18, 10), (2028, 1): (0.22, 10), (2029, 1): (0.51, 10)}})
+        self.assertEqual([r["cy"] for r in rows if not r["est"]], [2026, 2027])
+        self.assertTrue(rows[2]["est"])
+        self.assertAlmostEqual(rows[2]["eps"][0], 1.61 * 1.61 / 1.3, places=6)  # 2028 추정 = 1.61 × (1.61/1.3)
+        rows = self._rows({"Yahoo": {(2026, 12): (8.0, 40), (2027, 12): (16.0, 40)},
+                           "Nasdaq": {(2027, 12): (13.0, 10), (2028, 12): (15.0, 10)}})
+        self.assertAlmostEqual(rows[2]["rebase"], 16 / 13, places=6)  # 밴드 안(0.8~1.25)이면 재기준화
+
     def test_growth_uses_rebased_path(self):
         rows = self._rows({"Yahoo": {(2026, 12): (8.0, 40), (2027, 12): (16.0, 40)},
-                           "Nasdaq": {(2026, 12): (6.0, 10), (2027, 12): (12.0, 10), (2028, 12): (15.0, 10)}})
-        self.assertAlmostEqual(rows[2]["eps"][0], 20.0, places=6)  # 15 × (16/12)
-        self.assertAlmostEqual(rows[3]["eps"][0], 25.0, places=6)  # 추정: 20 × (20/16)
+                           "Nasdaq": {(2026, 12): (6.5, 10), (2027, 12): (13.0, 10), (2028, 12): (19.5, 10)}})
+        self.assertAlmostEqual(rows[2]["eps"][0], 24.0, places=6)  # 19.5 × (16/13)
+        self.assertAlmostEqual(rows[3]["eps"][0], 36.0, places=6)  # 추정: 24 × (24/16)
 
 
 if __name__ == "__main__":
