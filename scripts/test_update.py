@@ -200,5 +200,12 @@ class NportTest(unittest.TestCase):
         self.assertEqual([r[1] for r in rows], [100.0, None, 102.0])
 
 
+class RecentTest(unittest.TestCase):
+    def test_is_recent(self):
+        self.assertTrue(update.is_recent({"last_report": "2026-10-29"}, dt.date(2026, 11, 8)))
+        self.assertFalse(update.is_recent({"last_report": "2026-10-24"}, dt.date(2026, 11, 8)))
+        self.assertFalse(update.is_recent({}, dt.date(2026, 11, 8)))
+
+
 if __name__ == "__main__":
     unittest.main()

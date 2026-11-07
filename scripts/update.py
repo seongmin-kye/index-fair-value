@@ -1,7 +1,8 @@
 """데이터 갱신.
 
   python3 scripts/update.py prices            # 매일: 종목·지수 월봉 종가(이번 달은 최근 종가)와 컨센서스 PER 의 주가
-  python3 scripts/update.py full [TICKER ...] # 매주: Zacks 분기 EPS 로 최근 24개월 TTM 다시 계산 + 연도별 컨센서스
+  python3 scripts/update.py full [TICKER ...] # 매주: Zacks 분기 EPS 로 최근 24개월 TTM 다시 계산 + 연도별 컨센서스 (+ last_report·basis)
+  python3 scripts/update.py recent [TICKER ...]  # 평일 종가 뒤: 실적 발표 14일 이내 종목만 컨센서스·주가 다시 받기
   python3 scripts/update.py holdings          # 매주: SOXX·QQQ·SPY 구성 종목·비중 (새 종목은 START 부터 이력을 받음)
   python3 scripts/update.py nport             # 가끔: SEC N-PORT 로 SOXX 분기 구성 받기 (없는 분기만; 새 종목은 이력도 받음)
   python3 scripts/update.py backfill [TICKER ...]  # 한 번: START 까지 앞쪽 이력을 채움 (기존 행은 그대로)
@@ -240,8 +241,10 @@ def consensus(st):
     res = fp.compute(st["fwd_ticker"], 5, None, op)
     st["fwd"] = [{"per": c.get("per"), "est": c["est"], "actual": bool(c.get("actual")), "fy": c["fy"], "eps": c.get("eps"),
                   "thin": (not c["est"]) and bool(c["n"]) and max(c["n"]) <= 3,
-                  **({"src": c["src"]} if c.get("src") else {})} for c in res["rows"]]  # src: 출처별 EPS (build.unify 가 씀)
+                  **({"src": c["src"]} if c.get("src") else {}), **({"rebase": c["rebase"]} if c.get("rebase") else {})}
+                 for c in res["rows"]]  # src: 출처별 원값, rebase: Nasdaq 성장 경로를 수준 출처 잣대로 맞춘 배수
     st["fwd_price"], st["fwd_cur"] = res["price"], res["currency"]
+    st["basis"] = res.get("src_basis") or {}  # 출처별 잣대 검사 결과 (false 면 그 출처를 뺐음)
 
 
 def update_full_one(t, name=None):
@@ -252,7 +255,10 @@ def update_full_one(t, name=None):
         try:
             months, last, _, cur = monthly(st["price_ticker"], "11y" if not st["series"] else "3y")
             st["price_currency"] = cur
-            rebuild_series(st, ttm_points(zacks_quarters(t)), months, last)
+            qs = zacks_quarters(t)
+            if qs:
+                st["last_report"] = max(d for _, d, _ in qs).isoformat()  # recent 모드가 "발표 14일 이내" 를 고르는 기준
+            rebuild_series(st, ttm_points(qs), months, last)
         except Exception as e:
             errs.append(f"hist {e}")
     try:
@@ -263,6 +269,28 @@ def update_full_one(t, name=None):
         save(stock_path(t), st)
     time.sleep(1.0)
     return f"{t}: " + "; ".join(errs) if errs else None
+
+
+RECENT_DAYS = 14  # 발표 뒤 이만큼은 컨센서스가 계속 움직이므로 평일에도 다시 받는다
+
+
+def is_recent(st, today, days=RECENT_DAYS):
+    d = st.get("last_report")
+    return bool(d) and 0 <= (today - dt.date.fromisoformat(d)).days <= days
+
+
+def update_recent_one(t):
+    """최근 발표 종목의 컨센서스·주가만 다시 받는다 (실적 이력은 건드리지 않음)."""
+    st = load(stock_path(t))
+    if not st or not is_recent(st, dt.date.today()):
+        return None
+    try:
+        consensus(st)
+        save(stock_path(t), st)
+        time.sleep(1.0)
+        return None
+    except (Exception, SystemExit) as e:
+        return f"{t}: fwd {e}"
 
 
 def backfill_one(t):
@@ -581,6 +609,8 @@ def main():
         for k in INDEXES:
             update_index(k)
         errs = run(backfill_one, args or all_tickers(), 6)
+    elif mode == "recent":
+        errs = run(update_recent_one, args or all_tickers(), 6)
     elif mode == "splits":
         for k in INDEXES:
             update_index(k, "15y")
