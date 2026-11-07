@@ -195,18 +195,7 @@ def update_index(k, rng=None):
 def zacks_quarters(ticker):
     """[(분기 끝 월 index, 발표일, EPS)] — Zacks earnings-calendar 의 reported EPS (분할 보정)."""
     s = fetch(f"https://www.zacks.com/stock/research/{ticker}/earnings-calendar")
-    m = re.search(r'"earnings_announcements_earnings_table"\s*:\s*(\[\s*\[.*?\]\s*\])\s*[,}]', s, re.S)
-    if not m:
-        return []
-    out = []
-    for r in json.loads(m.group(1)):
-        reported = r[3].replace("$", "").replace(",", "").strip()
-        if reported in ("--", ""):
-            continue
-        mo, yr = r[1].split("/")
-        mm, dd, yy = r[0].split("/")
-        out.append((int(yr) * 12 + int(mo), dt.date(2000 + int(yy), int(mm), int(dd)), float(reported)))
-    return sorted(out)
+    return sorted((y * 12 + m, d, eps) for d, (y, m), eps in fp.parse_zacks_calendar(s))
 
 
 def ttm_points(qs):

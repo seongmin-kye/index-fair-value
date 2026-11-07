@@ -71,6 +71,73 @@ def fetch_yahoo_quarters(opener, ticker):
     return out
 
 
+ZACKS_UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                          "(KHTML, like Gecko) Chrome/120 Safari/537.36"}
+
+
+def _zacks_text(opener, url):
+    req = urllib.request.Request(url, headers=ZACKS_UA)
+    with opener.open(req, timeout=20) as r:
+        return r.read().decode("utf-8", "replace")
+
+
+def parse_zacks_calendar(text):
+    """Zacks earnings-calendar 페이지의 reported EPS 표 → [(발표일, (분기 끝 연, 월), EPS)] 발표일 오름차순. 미발표('--') 행 제외."""
+    m = re.search(r'"earnings_announcements_earnings_table"\s*:\s*(\[\s*\[.*?\]\s*\])\s*[,}]', text, re.S)
+    if not m:
+        return []
+    out = []
+    for r in json.loads(m.group(1)):
+        reported = r[3].replace("$", "").replace(",", "").strip()
+        if reported in ("--", ""):
+            continue
+        mo, yr = r[1].split("/")
+        mm, dd, yy = r[0].split("/")
+        out.append((datetime.date(2000 + int(yy), int(mm), int(dd)), (int(yr), int(mo)), float(reported)))
+    return sorted(out)
+
+
+def fetch_zacks_quarters(opener, ticker):
+    """최근 분기 조정 EPS 실적 (Zacks — 과거 PER 이력과 같은 잣대). {(qtr_end_year, qtr_end_month): eps}"""
+    rows = parse_zacks_calendar(_zacks_text(opener, f"https://www.zacks.com/stock/research/{ticker}/earnings-calendar"))
+    return {end: eps for _, end, eps in rows[-8:]}
+
+
+def parse_zacks_estimates(text):
+    """Zacks detailed-earning-estimates 페이지의 EPS 표("Year ago EPS" 가 있는 표)에서 Current Year·Next Year 열.
+    {(fy_end_year, fy_end_month): (consensus_eps, n_estimates)}. 표가 없으면 ValueError."""
+    for tbl in re.findall(r"<table[^>]*>(.*?)</table>", text, re.S):
+        if "Year ago EPS" not in tbl:
+            continue
+        heads = re.findall(r"<th[^>]*>(.*?)</th>", tbl, re.S)
+        cols = []
+        for h in heads:
+            label = re.sub(r"<[^>]+>", " ", h)
+            d = re.search(r"\((\d{1,2})/(\d{4})\)", label)
+            cols.append(("Year" in label and d) and (int(d.group(2)), int(d.group(1))) or None)
+        rows = {}
+        for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", tbl, re.S):
+            cells = [re.sub(r"<[^>]+>", "", c).strip() for c in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)]
+            if cells:
+                rows[cells[0]] = cells[1:]
+        est, n = rows.get("Zacks Consensus Estimate"), rows.get("# of Estimates")
+        if not est or not n:
+            break
+        cols = cols[-len(est):]  # 첫 th 는 행 이름 자리(빈 칸)라 값 열과 오른쪽 정렬로 맞춘다
+        out = {}
+        for i, fy in enumerate(cols):
+            if fy and i < len(est) and est[i] not in ("", "NA", "--"):
+                out[fy] = (float(est[i].replace(",", "")), int(n[i]) if i < len(n) and n[i].isdigit() else None)
+        if out:
+            return out
+    raise ValueError("Zacks 추정 표 없음")
+
+
+def fetch_zacks_eps(opener, ticker):
+    """FY+0, FY+1 연간 컨센서스 (Zacks 사이트). {(end_year, end_month): (eps, n)}"""
+    return parse_zacks_estimates(_zacks_text(opener, f"https://www.zacks.com/stock/quote/{ticker}/detailed-earning-estimates"))
+
+
 def fetch_nasdaq_quarters(opener, ticker):
     """최근 4개 분기 조정 EPS 실적 (Zacks). {(qtr_end_year, qtr_end_month): eps}"""
     url = f"https://api.nasdaq.com/api/company/{urllib.parse.quote(ticker)}/earnings-surprise"
