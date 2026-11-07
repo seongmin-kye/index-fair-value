@@ -207,15 +207,50 @@ def fetch_wisereport_eps(opener, ticker):
     return out
 
 
-def build_rows(sources, quarters, years, growth_override):
-    """달력연도별로 출처 EPS 를 모으고, 끝난 연도는 실적, 빈 연도는 성장률로 추정한다."""
-    by_cy = {}  # cy -> {"fy": (y, m), "eps": [..], "n": [..], "src": {출처: eps}}
+BASIS_TOL = 0.011  # 분기 EPS 잣대 검사 허용 오차 (센트 반올림)
+GROWTH_SRC = "Nasdaq"  # 수준이 아니라 FY+2 이후의 성장 경로만 빌리는 출처
+
+
+def basis_ok(src_q, ref_q, tol=BASIS_TOL):
+    """출처의 분기 실적이 기준(이력) 잣대와 같은가. 겹치는 분기 2개 이상이 모두 tol 안이면 True, 하나라도 어긋나면 False, 2개 미만이면 None(보류)."""
+    common = set(src_q) & set(ref_q)
+    if len(common) < 2:
+        return None
+    return all(abs(src_q[k] - ref_q[k]) <= tol for k in common)
+
+
+def merge_sources(sources):
+    """달력연도별로 출처 EPS 를 합친다. cy -> {"fy", "eps"(가중 평균), "n"(출처별 수), "src"(출처별 원값), "rebase"(Nasdaq 재기준화 배수)}.
+    수준 출처(Nasdaq 외)가 있는 연도는 애널리스트 수 가중 평균(수를 모르는 출처가 있으면 단순 평균).
+    Nasdaq 만 있는 연도는 Nasdaq 값 × k, k = 수준 출처와 Nasdaq 이 함께 있는 마지막 연도의 (가중 평균 ÷ Nasdaq). 겹침이 없으면 원값."""
+    raw = {}  # cy -> {"fy", "src": {출처: (eps, n)}}
     for name, src in sources.items():
         for (fy, fm), (eps, n) in src.items():
-            row = by_cy.setdefault(calendar_year(fy, fm), {"fy": (fy, fm), "eps": [], "n": [], "src": {}})
-            row["eps"].append(eps)
-            row["n"].append(n)
-            row["src"][name] = eps
+            raw.setdefault(calendar_year(fy, fm), {"fy": (fy, fm), "src": {}})["src"][name] = (eps, n)
+    out, k = {}, None
+    for cy in sorted(raw):
+        fy, src = raw[cy]["fy"], raw[cy]["src"]
+        level = {s: v for s, v in src.items() if s != GROWTH_SRC}
+        if level:
+            ws = [n if all(v[1] is not None for v in level.values()) else 1 for _, n in level.values()]
+            eps = sum(v[0] * w for v, w in zip(level.values(), ws)) / sum(ws)
+            out[cy] = {"fy": fy, "eps": eps, "n": [v[1] for v in level.values() if v[1] is not None], "src": {s: v[0] for s, v in level.items()}}
+            g = src.get(GROWTH_SRC)
+            if g and g[0] > 0 and eps > 0:
+                k = eps / g[0]
+        else:
+            out[cy] = {"fy": fy, "src": {GROWTH_SRC: src[GROWTH_SRC][0]}, "n": [src[GROWTH_SRC][1]] if src[GROWTH_SRC][1] is not None else []}
+    for cy, r in out.items():
+        if "eps" not in r:
+            r["eps"] = r["src"][GROWTH_SRC] * (k or 1)
+            if k:
+                r["rebase"] = k
+    return out
+
+
+def build_rows(sources, quarters, years, growth_override):
+    """달력연도별로 출처 EPS 를 모으고, 끝난 연도는 실적, 빈 연도는 성장률로 추정한다."""
+    by_cy = merge_sources(sources)
 
     this_year = datetime.date.today().year
     known = sorted(cy for cy in by_cy if cy >= this_year)
@@ -223,14 +258,13 @@ def build_rows(sources, quarters, years, growth_override):
         raise SystemExit("컨센서스 EPS 를 찾지 못했습니다.")
 
     def mid(cy):
-        e = by_cy[cy]["eps"]
-        return sum(e) / len(e)
+        return by_cy[cy]["eps"]
 
     # 애널리스트 3명 이하 연도는 성장률 기준에서 뺀다.
     # 컨센서스가 2개 연도 이하(해외 종목 등)면 --growth 없이는 추정하지 않는다.
     growth, basis = growth_override, None
     def thin(cy):
-        ns = [x for x in by_cy[cy]["n"] if x is not None]
+        ns = by_cy[cy]["n"]
         return bool(ns) and max(ns) <= 3  # 수가 공개되지 않은 출처(FnGuide)는 거르지 않는다
 
     reliable = [cy for cy in known if not thin(cy)]
@@ -245,8 +279,8 @@ def build_rows(sources, quarters, years, growth_override):
         cy = this_year + i
         if cy in by_cy:
             r = by_cy[cy]
-            rows.append({"i": i, "cy": cy, "fy": r["fy"], "eps": (min(r["eps"]), max(r["eps"])),
-                         "n": [x for x in r["n"] if x is not None], "est": False, "src": r["src"]})
+            rows.append({"i": i, "cy": cy, "fy": r["fy"], "eps": (r["eps"], r["eps"]), "n": r["n"], "est": False, "src": r["src"],
+                         **({"rebase": r["rebase"]} if "rebase" in r else {})})
         elif cy < known[0]:
             # 이미 끝난 회계연도라 컨센서스 대신 분기 실적 합계를 쓴다 (예: 8월 결산 종목의 올해)
             k = known[0] - cy
@@ -262,7 +296,7 @@ def build_rows(sources, quarters, years, growth_override):
                 rows.append({"i": i, "cy": cy, "fy": (fy + k, fm), "eps": None, "n": [], "est": True})
                 continue
             e = mid(last_cy) * (1 + growth) ** k
-            base_n = [x for x in by_cy[last_cy]["n"] if x is not None]
+            base_n = by_cy[last_cy]["n"]
             rows.append({"i": i, "cy": cy, "fy": (fy + k, fm), "eps": (e, e), "n": base_n,
                          "est": True, "base": last_cy})
     return rows, growth, basis
@@ -275,27 +309,32 @@ def fmt_range(lo, hi, f, paren=False):
 
 def compute(ticker, years, growth_override, opener):
     price, ts, cur = fetch_price(opener, ticker)
+    zt = ticker.replace("-", ".")  # Zacks 는 BRK.B 꼴
     sources = {}
-    fetchers = [("Zacks", fetch_nasdaq_eps), ("Yahoo", fetch_yahoo_eps)]
+    fetchers = [("Zacks", lambda op, t: fetch_zacks_eps(op, zt)), ("Yahoo", fetch_yahoo_eps), (GROWTH_SRC, fetch_nasdaq_eps)]
     if ticker.endswith((".KS", ".KQ")):
-        fetchers[0] = ("FnGuide", fetch_wisereport_eps)
+        fetchers = [("FnGuide", fetch_wisereport_eps), ("Yahoo", fetch_yahoo_eps)]
     for name, fn in fetchers:
         try:
             sources[name] = fn(opener, ticker)
         except Exception as e:
             print(f"  [{name}] 조회 실패: {e}", file=sys.stderr)
     quarters = {}
-    for name, fn in (("Zacks", fetch_nasdaq_quarters), ("Yahoo", fetch_yahoo_quarters)):
+    for name, fn in (("Zacks", lambda op, t: fetch_zacks_quarters(op, zt)), ("Yahoo", fetch_yahoo_quarters)):
         try:
             quarters[name] = fn(opener, ticker)
         except Exception:
-            pass  # 끝난 회계연도가 있을 때만 쓰는 보조 데이터
+            pass  # 잣대 검사와 끝난 회계연도 실적에 쓰는 보조 데이터
+    # 잣대 검사: Yahoo 의 분기 실적이 이력(Zacks) 잣대와 어긋나면 그 종목에서 Yahoo 를 뺀다 (예: ASML)
+    src_basis = {"Yahoo": basis_ok(quarters["Yahoo"], quarters["Zacks"]) if "Yahoo" in quarters and "Zacks" in quarters else None}
+    if src_basis["Yahoo"] is False:
+        sources.pop("Yahoo", None)
     rows, growth, basis = build_rows(sources, quarters, years, growth_override)
     for r in rows:
         lo_hi = r["eps"]
         r["per"] = sorted(price / x for x in lo_hi) if lo_hi and lo_hi[0] > 0 else None
     return {"ticker": ticker, "price": price, "time": ts.isoformat(), "currency": cur,
-            "rows": rows, "growth": growth, "basis": basis}
+            "rows": rows, "growth": growth, "basis": basis, "src_basis": src_basis}
 
 
 def report(ticker, years, growth_override, opener):
