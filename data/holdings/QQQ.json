@@ -40,13 +40,13 @@
 3.02
 ],
 [
-"SPCX",
-"Space Exploration Technologies Corp",
+"WMT",
+"Walmart Inc",
 2.74
 ],
 [
-"WMT",
-"Walmart Inc",
+"SPCX",
+"Space Exploration Technologies Corp",
 2.74
 ],
 [
@@ -90,13 +90,13 @@
 1.37
 ],
 [
-"LRCX",
-"Lam Research Corp",
+"TXN",
+"Texas Instruments Inc",
 1.3
 ],
 [
-"TXN",
-"Texas Instruments Inc",
+"LRCX",
+"Lam Research Corp",
 1.3
 ],
 [
@@ -130,13 +130,13 @@
 0.94
 ],
 [
-"KLAC",
-"KLA Corp",
+"ADI",
+"Analog Devices Inc",
 0.92
 ],
 [
-"ADI",
-"Analog Devices Inc",
+"KLAC",
+"KLA Corp",
 0.92
 ],
 [
@@ -145,13 +145,13 @@
 0.85
 ],
 [
-"QCOM",
-"QUALCOMM Inc",
+"SHOP",
+"Shopify Inc",
 0.78
 ],
 [
-"SHOP",
-"Shopify Inc",
+"QCOM",
+"QUALCOMM Inc",
 0.78
 ],
 [
@@ -215,19 +215,24 @@
 0.49
 ],
 [
-"ADBE",
-"Adobe Inc",
+"REGN",
+"Regeneron Pharmaceuticals Inc",
 0.44
 ],
 [
-"REGN",
-"Regeneron Pharmaceuticals Inc",
+"ADBE",
+"Adobe Inc",
 0.44
 ],
 [
 "INTU",
 "Intuit Inc",
 0.43
+],
+[
+"MNST",
+"Monster Beverage Corp",
+0.42
 ],
 [
 "CEG",
@@ -245,14 +250,14 @@
 0.42
 ],
 [
-"MNST",
-"Monster Beverage Corp",
-0.42
-],
-[
 "MRNA",
 "Moderna Inc",
 0.41
+],
+[
+"CDNS",
+"Cadence Design Systems Inc",
+0.4
 ],
 [
 "ARM",
@@ -265,14 +270,14 @@
 0.4
 ],
 [
-"CDNS",
-"Cadence Design Systems Inc",
-0.4
-],
-[
 "SNPS",
 "Synopsys Inc",
 0.4
+],
+[
+"CMCSA",
+"Comcast Corp",
+0.38
 ],
 [
 "MELI",
@@ -285,18 +290,13 @@
 0.38
 ],
 [
-"CMCSA",
-"Comcast Corp",
-0.38
+"DASH",
+"DoorDash Inc",
+0.34
 ],
 [
 "ROST",
 "Ross Stores Inc",
-0.34
-],
-[
-"DASH",
-"DoorDash Inc",
 0.34
 ],
 [
@@ -315,11 +315,6 @@
 0.33
 ],
 [
-"ABNB",
-"Airbnb Inc",
-0.32
-],
-[
 "HON",
 "Honeywell International Inc",
 0.32
@@ -327,6 +322,11 @@
 [
 "AEP",
 "American Electric Power Co Inc",
+0.32
+],
+[
+"ABNB",
+"Airbnb Inc",
 0.32
 ],
 [
@@ -350,6 +350,11 @@
 0.27
 ],
 [
+"IDXX",
+"IDEXX Laboratories Inc",
+0.24
+],
+[
 "BKR",
 "Baker Hughes Co",
 0.24
@@ -360,13 +365,8 @@
 0.24
 ],
 [
-"IDXX",
-"IDEXX Laboratories Inc",
-0.24
-],
-[
-"FANG",
-"Diamondback Energy Inc",
+"PDD",
+"PDD Holdings Inc",
 0.24
 ],
 [
@@ -375,8 +375,8 @@
 0.24
 ],
 [
-"PDD",
-"PDD Holdings Inc",
+"FANG",
+"Diamondback Energy Inc",
 0.24
 ],
 [
@@ -385,8 +385,8 @@
 0.23
 ],
 [
-"CCEP",
-"Coca-Cola Europacific Partners PLC",
+"XEL",
+"Xcel Energy Inc",
 0.22
 ],
 [
@@ -400,8 +400,8 @@
 0.22
 ],
 [
-"XEL",
-"Xcel Energy Inc",
+"CCEP",
+"Coca-Cola Europacific Partners PLC",
 0.22
 ],
 [
@@ -410,18 +410,23 @@
 0.21
 ],
 [
-"EXC",
-"Exelon Corp",
-0.21
-],
-[
 "ROP",
 "Roper Technologies Inc",
 0.21
 ],
 [
-"FER",
-"Ferrovial NV",
+"EXC",
+"Exelon Corp",
+0.21
+],
+[
+"TRI",
+"Thomson Reuters Corp",
+0.19
+],
+[
+"PAYX",
+"Paychex Inc",
 0.19
 ],
 [
@@ -435,13 +440,8 @@
 0.19
 ],
 [
-"TRI",
-"Thomson Reuters Corp",
-0.19
-],
-[
-"PAYX",
-"Paychex Inc",
+"FER",
+"Ferrovial NV",
 0.19
 ],
 [
@@ -460,13 +460,13 @@
 0.17
 ],
 [
-"TTWO",
-"Take-Two Interactive Software Inc",
+"NBIS",
+"Nebius Group NV",
 0.16
 ],
 [
-"NBIS",
-"Nebius Group NV",
+"TTWO",
+"Take-Two Interactive Software Inc",
 0.16
 ],
 [
@@ -475,13 +475,13 @@
 0.16
 ],
 [
-"RKLB",
-"Rocket Lab Corp",
+"AXON",
+"Axon Enterprise Inc",
 0.15
 ],
 [
-"AXON",
-"Axon Enterprise Inc",
+"RKLB",
+"Rocket Lab Corp",
 0.15
 ],
 [
