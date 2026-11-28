@@ -215,13 +215,13 @@
 0.49
 ],
 [
-"REGN",
-"Regeneron Pharmaceuticals Inc",
+"ADBE",
+"Adobe Inc",
 0.44
 ],
 [
-"ADBE",
-"Adobe Inc",
+"REGN",
+"Regeneron Pharmaceuticals Inc",
 0.44
 ],
 [
@@ -230,8 +230,8 @@
 0.43
 ],
 [
-"MNST",
-"Monster Beverage Corp",
+"CSX",
+"CSX Corp",
 0.42
 ],
 [
@@ -245,8 +245,8 @@
 0.42
 ],
 [
-"CSX",
-"CSX Corp",
+"MNST",
+"Monster Beverage Corp",
 0.42
 ],
 [
@@ -255,8 +255,8 @@
 0.41
 ],
 [
-"CDNS",
-"Cadence Design Systems Inc",
+"SNPS",
+"Synopsys Inc",
 0.4
 ],
 [
@@ -265,13 +265,13 @@
 0.4
 ],
 [
-"CTAS",
-"Cintas Corp",
+"CDNS",
+"Cadence Design Systems Inc",
 0.4
 ],
 [
-"SNPS",
-"Synopsys Inc",
+"CTAS",
+"Cintas Corp",
 0.4
 ],
 [
@@ -290,11 +290,6 @@
 0.38
 ],
 [
-"DASH",
-"DoorDash Inc",
-0.34
-],
-[
 "ROST",
 "Ross Stores Inc",
 0.34
@@ -302,6 +297,11 @@
 [
 "APP",
 "AppLovin Corp",
+0.34
+],
+[
+"DASH",
+"DoorDash Inc",
 0.34
 ],
 [
@@ -360,8 +360,8 @@
 0.24
 ],
 [
-"PCAR",
-"PACCAR Inc",
+"ADSK",
+"Autodesk Inc",
 0.24
 ],
 [
@@ -370,13 +370,13 @@
 0.24
 ],
 [
-"ADSK",
-"Autodesk Inc",
+"FANG",
+"Diamondback Energy Inc",
 0.24
 ],
 [
-"FANG",
-"Diamondback Energy Inc",
+"PCAR",
+"PACCAR Inc",
 0.24
 ],
 [
@@ -390,6 +390,11 @@
 0.22
 ],
 [
+"CCEP",
+"Coca-Cola Europacific Partners PLC",
+0.22
+],
+[
 "PYPL",
 "PayPal Holdings Inc",
 0.22
@@ -400,9 +405,9 @@
 0.22
 ],
 [
-"CCEP",
-"Coca-Cola Europacific Partners PLC",
-0.22
+"EXC",
+"Exelon Corp",
+0.21
 ],
 [
 "KDP",
@@ -415,23 +420,13 @@
 0.21
 ],
 [
-"EXC",
-"Exelon Corp",
-0.21
-],
-[
-"TRI",
-"Thomson Reuters Corp",
-0.19
-],
-[
 "PAYX",
 "Paychex Inc",
 0.19
 ],
 [
-"TER",
-"Teradyne Inc",
+"TRI",
+"Thomson Reuters Corp",
 0.19
 ],
 [
@@ -442,6 +437,11 @@
 [
 "FER",
 "Ferrovial NV",
+0.19
+],
+[
+"TER",
+"Teradyne Inc",
 0.19
 ],
 [
@@ -460,13 +460,13 @@
 0.17
 ],
 [
-"NBIS",
-"Nebius Group NV",
+"TTWO",
+"Take-Two Interactive Software Inc",
 0.16
 ],
 [
-"TTWO",
-"Take-Two Interactive Software Inc",
+"NBIS",
+"Nebius Group NV",
 0.16
 ],
 [
@@ -475,13 +475,13 @@
 0.16
 ],
 [
-"AXON",
-"Axon Enterprise Inc",
+"RKLB",
+"Rocket Lab Corp",
 0.15
 ],
 [
-"RKLB",
-"Rocket Lab Corp",
+"AXON",
+"Axon Enterprise Inc",
 0.15
 ],
 [
